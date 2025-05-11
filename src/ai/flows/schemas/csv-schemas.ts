@@ -16,7 +16,12 @@ export const CleaningSuggestionSchema = z.object({
   source: z.enum(['user_instruction', 'general_suggestion']).describe('Indicates if the suggestion originated from a user instruction or general AI analysis.'),
   confidence: z.number().optional().describe('LLM confidence score for this suggestion (expected range 0.0 to 1.0). Higher means more confident.'),
   priority: z.enum(['low', 'medium', 'high']).optional().describe('Suggested priority for addressing this issue. User instructions are typically high priority.'),
-  affectedRows: z.number().optional().describe('For column-wide operations, an estimated count of rows that would be affected by this suggestion (should be a positive integer if provided). Omit for single-row operations.')
+  affectedRows: z.number().optional().describe('For column-wide operations, an estimated count of rows that would be affected by this suggestion (should be a positive integer if provided). Omit for single-row operations.'),
+  imputationOptions: z.object({
+    mean: z.number().optional(),
+    median: z.number().optional(),
+    mode: z.number().optional()
+  }).optional().describe('Options calculated by the backend for numeric imputation.'),
 }).refine(data => {
   // If actionType requires a columnName (e.g. not REMOVE_ROW that might not specify one), then columnName must be present.
   if (!['REMOVE_ROW', 'OTHER'].includes(data.actionType) && !data.columnName) {
