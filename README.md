@@ -1,137 +1,202 @@
-# DataMaestro
+# DataMaestro - AI-Powered CSV Processing Tool
 
-## Project Overview
+## About The Project
 
-DataMaestro is a Next.js application designed to enhance data quality within a Customer Data Platform (CDP) using the power of Large Language Models (LLMs). It provides a suite of tools for cleaning, standardizing, profiling, and analyzing data, aiming to improve data reliability, consistency, and the ability to derive valuable insights.
+DataMaestro is a web application designed to help users clean, process, and analyze CSV (Comma Separated Values) files. It leverages the power of Large Language Models (LLMs) through Genkit to provide intelligent suggestions for data cleaning, enable complex data transformations via natural language commands or SQL queries, and offer data profiling capabilities. The goal is to make CSV data wrangling more intuitive, efficient, and accessible.
 
-The platform leverages Genkit to interact with LLMs (currently configured for Google Gemini) to perform complex data manipulation tasks, complemented by a user-friendly interface featuring human-in-the-loop validation and iterative refinement capabilities.
+The application provides a user-friendly interface for:
 
-## Key Features
-
-*   **Unified Data Analysis:** Input data via text area or file upload (JSON/CSV) to trigger multiple analyses:
-    *   **AI-Powered Data Profiling:** Automatically analyzes datasets (JSON or CSV) to infer data types, identify distributions, detect missing values, find common formats, and flag potential quality issues.
-    *   **AI-Powered Anomaly Detection:** Utilizes LLMs to identify outliers and inconsistencies in JSON data, providing descriptions and suggested corrections.
-    *   **AI-Powered CSV Cleaning:** Cleans and standardizes data within uploaded CSV files based on general best practices or specific instructions.
-*   **Continuous Prompting (Chat):** An interactive chat interface allowing users to iteratively refine data or ask questions about the dataset using the LLM.
-*   **Human-in-the-Loop Validation:** (Implicit in Anomaly Detection/Standardization flows) Allows users to review and approve/reject suggestions made by the LLM (currently integrated within the individual flows, logs rejections).
-*   **Issue Log:** Tracks items (anomalies, standardizations) that were rejected by the user during validation, providing insights for model/prompt improvement.
-*   **Modular AI Flows:** Uses Genkit flows for distinct AI tasks, making the system extensible.
-
-## Technology Stack
-
-*   **Frontend:** Next.js (App Router), React, TypeScript
-*   **Styling:** Tailwind CSS, ShadCN UI Components
-*   **AI Integration:** Genkit, Google Gemini (via `@genkit-ai/googleai`)
-*   **Data Handling:** PapaParse (for CSV parsing)
-*   **Utilities:** Lucide React (Icons), date-fns (Date formatting)
+- Uploading CSV files.
+- Generating and applying AI-driven cleaning suggestions (e.g., handling missing values, correcting data types, ensuring consistency).
+- Processing CSV data using direct commands (interpreted by an LLM).
+- Transforming CSV data using SQL queries (with both direct execution and LLM-assisted execution).
+- Profiling data to understand its structure, quality, and statistical properties.
+- Iteratively cleaning and refining datasets.
 
 ## Getting Started
 
+Follow these instructions to get a local copy up and running.
+
 ### Prerequisites
 
-*   Node.js (LTS version recommended)
-*   npm, yarn, or pnpm package manager
+- **Node.js**: Make sure you have Node.js installed. You can download it from [nodejs.org](https://nodejs.org/). (Check `package.json` for specific version compatibility if listed under `engines`, otherwise a recent LTS version should work).
+- **npm** or **yarn**: These package managers come with Node.js. This project uses npm based on the `package.json`.
+- **(Optional) Ollama**: If you intend to use local LLMs via Ollama, ensure Ollama is installed and running. You can find installation instructions at [ollama.com](https://ollama.com/). You will also need to pull the models specified in the application (e.g., `deepseek-r1:1.5b`).
 
-### Installation
+### Installation & Setup
 
-1.  Clone the repository:
-    ```bash
+1.  **Clone the repository:**
+
+    ```powershell
     git clone <your-repository-url>
     cd DataMaestro
     ```
-2.  Install dependencies:
-    ```bash
+
+2.  **Install NPM packages:**
+
+    ```powershell
     npm install
-    # or
-    yarn install
-    # or
-    pnpm install
     ```
 
-### Environment Setup
-
-1.  Create a `.env` file in the root of the project.
-2.  Add your Google Generative AI API key to the `.env` file:
-    ```dotenv
-    GOOGLE_GENAI_API_KEY=YOUR_API_KEY_HERE
+3.  **Environment Variables (if any):**
+    If your project requires environment variables (e.g., API keys for Genkit providers like Google AI), create a `.env.local` file in the root directory and add them there. For example:
     ```
-    *Note: The application currently relies on the Google Gemini model available through the `@genkit-ai/googleai` plugin. Ensure your API key has access to the required models (e.g., `gemini-1.5-flash`).*
+    GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
+    # Add other environment variables as needed
+    ```
+    Consult `src/ai/ai-instance.ts` or related configuration files for required environment variables.
 
-### Running the Development Server
+### Running the Application
 
-1.  Start the Next.js development server:
-    ```bash
+1.  **Start the Genkit AI Flows (Development Mode):**
+    This command starts the Genkit flows, often making them available for the Next.js frontend to call. It will typically watch for changes in your AI flow definitions.
+
+    ```powershell
+    npm run genkit:dev
+    ```
+
+    Alternatively, to have it watch for changes:
+
+    ```powershell
+    npm run genkit:watch
+    ```
+
+2.  **Start the Next.js Development Server:**
+    This command starts the Next.js frontend application.
+    ```powershell
     npm run dev
-    # or
-    yarn dev
-    # or
-    pnpm dev
     ```
-2.  Open your browser and navigate to [http://localhost:9002](http://localhost:9002).
+    The application should now be accessible at `http://localhost:9002` (or the port specified in your `dev` script).
 
-### Running the Genkit Development Server (Optional)
+### Other Useful Scripts
 
-For debugging and inspecting Genkit flows:
+- **Build for production:**
+  ```powershell
+  npm run build
+  ```
+- **Start in production mode (after building):**
+  ```powershell
+  npm run start
+  ```
+- **Lint the code:**
+  ```powershell
+  npm run lint
+  ```
+- **Type check with TypeScript:**
+  ```powershell
+  npm run typecheck
+  ```
 
-```bash
-npm run genkit:dev
-# or for watching changes
-npm run genkit:watch
-```
-This usually starts the Genkit UI on `http://localhost:4000`.
+## Project Structure & Workflow
 
-## Usage
+Understanding the directory structure will help you navigate the codebase:
 
-1.  **Data Analysis:**
-    *   Navigate to the "Unified Data Analysis" card.
-    *   Either paste JSON or CSV data directly into the text area OR upload a `.json` or `.csv` file.
-    *   Click "Analyze Data".
-    *   The application will automatically detect the format and run relevant analyses (Profiling, Anomaly Detection for JSON, CSV Cleaning for CSV).
-    *   Results for each analysis step will be displayed in separate cards below the input.
-2.  **Continuous Prompting:**
-    *   Go to the "Continuous Prompting (Chat)" card.
-    *   Enter your prompts or questions about the data in the chat input.
-    *   The LLM will respond based on the conversation history and its capabilities. Use this for iterative refinement or asking specific data questions.
-3.  **Issue Log:**
-    *   Rejected suggestions from anomaly detection or standardization (if re-enabled) will appear in the "Issue Log" card, showing the context and the rejected suggestion.
+- `n:/DataMaestro/`
+  - `package.json`: Lists project dependencies and scripts.
+  - `next.config.ts`: Configuration for the Next.js framework.
+  - `tsconfig.json`: TypeScript compiler options.
+  - `tailwind.config.ts`: Configuration for Tailwind CSS.
+  - `src/`: Contains all the source code.
+    - `ai/`: Core of the AI functionalities.
+      - `ai-instance.ts`: Likely initializes AI models and configurations (e.g., Genkit setup, model providers).
+      - `dev.ts`: Entry point for running Genkit flows in development (used by `genkit:dev` script).
+      - `flows/`: Contains the definitions for various AI-driven data processing flows.
+        - `apply-csv-changes.ts`: Logic for applying approved cleaning suggestions to the CSV data.
+        - `csv-cleaning-suggestions.ts`: Generates suggestions for cleaning the CSV data.
+        - `csv-direct-commands.ts`: Processes CSV data based on natural language commands using an LLM.
+        - `csv-direct-processor.ts`: A more direct (potentially rule-based or simpler LLM) CSV command processor.
+        - `csv-direct-sql-processor.ts`: Processes CSV data using SQL queries directly.
+        - `csv-sql-processing.ts`: Processes CSV data using SQL queries, potentially with LLM assistance for query understanding or generation.
+        - `data-profiling.ts`: Logic for analyzing and generating a profile of the CSV data.
+        - `schemas/`: Defines data structures and schemas (using Zod) for AI inputs, outputs, and internal representations.
+          - `csv-processor-types.ts`: Common types used across CSV processing flows.
+          - `csv-schemas.ts`: Zod schemas specifically for CSV data and cleaning suggestions.
+    - `app/`: Next.js specific application structure (routing, layouts, pages).
+      - `layout.tsx`: Main layout component for the application.
+      - `page.tsx`: The main page component, likely hosting the primary CSV processing interface.
+      - `globals.css`: Global styles.
+    - `components/`: Reusable React components used throughout the application.
+      - `csv-processing.tsx`: The core UI component for handling CSV file uploads, displaying suggestions, applying changes, and interacting with various processing modes (suggestions, SQL, commands). This is a central piece of the user interface.
+      - `data-profiling.tsx`: UI component for displaying data profiling results.
+      - `suggestion-item.tsx`: Component for rendering individual cleaning suggestions.
+      - `ui/`: Contains Shadcn UI components (Button, Card, Input, etc.) that form the building blocks of the interface.
+    - `hooks/`: Custom React hooks.
+      - `use-toast.ts`: Hook for displaying toast notifications.
+    - `lib/`: Utility functions.
+      - `utils.ts`: General utility functions.
+  - `docs/`: Contains documentation like `blueprint.md`.
 
-## Project Structure
+### General Workflow Example
 
-```
-DataMaestro/
-├── public/               # Static assets
-├── src/
-│   ├── ai/               # Genkit AI configuration and flows
-│   │   ├── flows/        # Specific AI task flows (profiling, anomaly, csv, chat)
-│   │   └── ai-instance.ts # Genkit initialization and model config
-│   ├── app/              # Next.js App Router pages and layout
-│   │   ├── (main)/       # Main application layout route group (if used)
-│   │   ├── api/          # API routes (Genkit integration)
-│   │   ├── globals.css   # Global styles and Tailwind directives
-│   │   ├── layout.tsx    # Root layout
-│   │   └── page.tsx      # Main application page component
-│   ├── components/       # React components
-│   │   ├── ui/           # ShadCN UI components
-│   │   └── *.tsx         # Application-specific components (DataAnalysis, IssueLog, etc.)
-│   ├── hooks/            # Custom React hooks (use-toast, use-mobile)
-│   └── lib/              # Utility functions (cn)
-├── .env                  # Environment variables (API Keys) - **DO NOT COMMIT SENSITIVE KEYS**
-├── next.config.mjs       # Next.js configuration
-├── package.json          # Project dependencies and scripts
-├── tailwind.config.ts    # Tailwind CSS configuration
-└── tsconfig.json         # TypeScript configuration
-```
+1.  **Upload:** User uploads a CSV file via the interface in `csv-processing.tsx`.
+2.  **Initial State:** The data is loaded, and a preview might be shown.
+3.  **User Action (Choose one or more):**
+    - **Get Suggestions:** User requests cleaning suggestions. `csv-processing.tsx` calls an AI flow (e.g., `suggestCsvCleaningActions` from `csv-cleaning-suggestions.ts`). The LLM analyzes the data and returns potential cleaning actions.
+    - **Profile Data:** User requests a data profile. `csv-processing.tsx` calls a flow like `profileData` from `data-profiling.ts`. Results are displayed using `data-profiling.tsx`.
+    - **Direct Commands:** User enters natural language commands (e.g., "remove rows where column X is empty"). `csv-processing.tsx` sends this to a flow like `processCsvWithCommands` (from `csv-direct-commands.ts`) or `processDirectCsv` (from `csv-direct-processor.ts`).
+    - **SQL Processing:** User enters a SQL query. `csv-processing.tsx` sends this to a flow like `processCsvWithSql` (from `csv-sql-processing.ts`) or `processDirectSql` (from `csv-direct-sql-processor.ts`).
+4.  **Review & Approve (for suggestions):** Suggestions are displayed using `suggestion-item.tsx`. User reviews, modifies, and approves/rejects them.
+5.  **Apply Changes:**
+    - For suggestions: `csv-processing.tsx` calls `applyCsvApprovedChanges` (from `apply-csv-changes.ts`) with the approved actions.
+    - For commands/SQL: The respective flow directly returns the processed CSV data.
+6.  **Update & Iterate:** The `currentCsvData` state in `csv-processing.tsx` is updated. The user can then download the processed data or perform further actions (profiling the cleaned data, applying more suggestions, etc.), enabling an iterative data cleaning process.
 
-## Future Enhancements (Based on Research Goals)
+## Technologies Used
 
-*   **Model Comparison:** Integrate UI elements to select and compare different LLMs (e.g., other Gemini versions, potentially Claude, open-source models via APIs if free tiers allow).
-*   **Evaluation Dashboard:** Implement a dedicated dashboard to evaluate LLM performance based on accuracy (user validation), efficiency (processing time), and potentially compare against baseline methods.
-*   **Advanced Error Handling:** Improve error messages and potentially implement retry logic or more sophisticated error analysis within the flows.
-*   **Bias Detection & Mitigation:** Research and implement techniques to identify and address potential biases in LLM outputs.
-*   **Scalability Testing:** Evaluate performance with larger datasets.
-*   **Refined Human-in-the-Loop:** Enhance the UI for reviewing and acting upon LLM suggestions across all relevant features.
+This project is built with the following core technologies:
+
+- **Frontend:** Next.js, React, TypeScript, Tailwind CSS, Shadcn UI
+- **Backend/AI Flows:** Genkit, Google AI (Vertex AI / Gemini), Ollama (for local models)
+- **Data Handling:** PapaParse (for CSV parsing), Zod (for schema validation)
+- **Development:** Node.js, npm
+
+## Why AI/LLMs for CSV Processing?
+
+Traditional CSV processing tools often require users to write complex scripts (e.g., Python with Pandas) or manually perform repetitive tasks. LLMs offer several advantages in this domain:
+
+1.  **Natural Language Understanding:** Users can specify data cleaning or transformation tasks using plain English (or other languages), lowering the barrier to entry for non-programmers. For example, instead of writing a regex, a user might say "make all email addresses lowercase."
+2.  **Intelligent Suggestions:** LLMs can analyze the data contextually and provide relevant suggestions for cleaning and improvement that might not be immediately obvious (e.g., identifying inconsistent date formats, suggesting imputation methods for missing data based on column semantics).
+3.  **Handling Ambiguity & Complexity:** LLMs can often interpret ambiguous instructions and handle more complex, multi-step transformations that would be cumbersome to define with traditional rules or scripts.
+4.  **Flexibility:** They can adapt to a wide variety of CSV structures and data quality issues without needing pre-defined rules for every scenario.
+5.  **Efficiency for Exploratory Data Cleaning:** LLMs can accelerate the initial stages of data cleaning by quickly identifying common issues and proposing solutions, allowing data analysts to focus on more nuanced problems.
+6.  **Contextual Data Imputation:** When filling missing values, LLMs can potentially make more informed decisions based on the surrounding data and the inferred meaning of the column, rather than just statistical measures like mean or median.
+
+While LLMs are powerful, this project also incorporates direct processors (for commands and SQL) which can be more efficient and deterministic for well-defined tasks, offering a hybrid approach.
+
+## Future Enhancements (Example Ideas)
+
+- Advanced anomaly detection.
+- Automated data standardization against predefined schemas.
+- Visualizations for data profiling results.
+- Support for more complex data transformation recipes.
+- Integration with more data sources or destinations.
+
+---
+
+## Troubleshooting
+
+- **Ollama Model Not Found (e.g., `Error: Model 'model-name:latest' not found`):**
+  - Ensure Ollama is running.
+  - Verify the model name and tag are correct. You can list your locally available Ollama models using `ollama list` in your terminal.
+  - If the model is not present locally, pull it using `ollama pull model-name:tag`.
+  - Update the `ollamaModel` state in `src/components/csv-processing.tsx` if you are using a different model name/tag than the default.
+- **Genkit Flows Not Starting:**
+  - Check the console output when running `npm run genkit:dev` or `npm run genkit:watch` for any error messages.
+  - Ensure any required environment variables (like API keys) are correctly set in your `.env.local` file.
+
+## Contributing
+
+We welcome contributions! If you'd like to contribute, please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/your-feature-name`).
+3. Make your changes.
+4. Commit your changes (`git commit -m 'Add some feature'`).
+5. Push to the branch (`git push origin feature/your-feature-name`).
+6. Open a Pull Request.
+
+Please make sure your code adheres to the existing style and that all tests pass.
 
 ## License
 
-[Specify License Here - e.g., MIT]
-```
+This project is licensed under the Nisham_license.
