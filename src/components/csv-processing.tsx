@@ -994,10 +994,6 @@ export default function CsvProcessing() {
                         <SelectValue placeholder="Select Ollama model" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="llama3">Llama 3</SelectItem>
-                        <SelectItem value="llama2">Llama 2</SelectItem>
-                        <SelectItem value="mixtral">Mixtral</SelectItem>
-                        <SelectItem value="codellama">Code Llama</SelectItem>
                         <SelectItem value="deepseek:latest">DeepSeek Latest</SelectItem>
                       </SelectContent>
                     </Select>
