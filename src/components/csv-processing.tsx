@@ -1036,8 +1036,6 @@ export default function CsvProcessing() {
                         <p className="text-xs text-muted-foreground">For removing "Type" from Supermarket values:</p>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>replace " Type1" with "" in "Outlet_Type"</code><br/>
-                          <code>replace " Type2" with "" in "Outlet_Type"</code><br/>
-                          <code>replace " Type3" with "" in "Outlet_Type"</code>
                         </div>
                       </div>
                       
