@@ -86,13 +86,68 @@ export async function processDirectCsv(input: CsvProcessingInput): Promise<CsvPr
     const data: CsvRow[] = [...parseResult.data as CsvRow[]];
     const headers = parseResult.meta.fields || [];
     const command = input.commands.toLowerCase();
+    const originalCommand = input.commands;
     const appliedActions = [];
     let actionsApplied = 0;
     let rowsModified = 0;
     
-    // Process find and replace commands
-    if (command.includes('change') || command.includes('replace') || 
-        (command.includes('set') && command.includes('to'))) {
+    // ===== START: NEW - Specific handling for "fill missing/null/empty" commands =====
+    const fillPatterns = [
+      // fill missing values in 'Column' with 'Value'
+      /fill\s+(?:the\s+|all\s+)?missing\s+(?:values\s+)?(?:in\s+)?(?:(?:column|field|the\s+column)\s+)?['"]*([^'"]+)['"]*\s+(?:with|to)\s+['"]*([^'"]*)['"]*(?:\s|$)/i,
+      // fill nulls/empty in 'Column' with 'Value'
+      /fill\s+(?:the\s+|all\s+)?(?:null|nulls|null\s+values|empty|empty\s+values?)(?:\s+in\s+|\s+of\s+|\s+for\s+|\s+from\s+)?(?:(?:column|field|the\s+column)\s+)?['"]*([^'"]+)['"]*\s+(?:with|to)\s+['"]*([^'"]*)['"]*(?:\s|$)/i,
+      // change nulls/empty in 'Column' to 'Value'
+      /change\s+(?:the\s+|all\s+)?(?:null|nulls|null\s+values|empty|empty\s+values?)(?:\s+in\s+|\s+of\s+|\s+for\s+|\s+from\s+)?(?:(?:column|field|the\s+column)\s+)?['"]*([^'"]+)['"]*\s+(?:with|to)\s+['"]*([^'"]*)['"]*(?:\s|$)/i,
+      // replace nulls/empty in 'Column' with 'Value'
+      /replace\s+(?:the\s+|all\s+)?(?:null|nulls|null\s+values|empty|empty\s+values?)(?:\s+in\s+|\s+of\s+|\s+for\s+|\s+from\s+)?(?:(?:column|field|the\s+column)\s+)?['"]*([^'"]+)['"]*\s+(?:with|by|to)\s+['"]*([^'"]*)['"]*(?:\s|$)/i,
+      // set empty/missing/nulls in 'Column' to 'Value'
+      /set\s+(?:the\s+|all\s+)?(?:empty|missing|null|nulls)(?:\s+values?\s+)?(?:in|of|for|from)?\s+(?:(?:column|field|the\s+column)\s+)?['"]*([^'"]+)['"]*\s+(?:with|to|as)\s+['"]*([^'"]*)['"]*(?:\s|$)/i
+    ];
+
+    let fillProcessed = false;
+    for (const pattern of fillPatterns) {
+      const match = pattern.exec(originalCommand);
+      if (match && match.length >= 3) {
+        const columnName = match[1].trim();
+        const replacementValue = match[2].trim();
+        const targetColumn = headers.find(h => h.toLowerCase() === columnName.toLowerCase());
+
+        if (targetColumn) {
+          let rowsAffected = 0;
+          data.forEach((row, index) => {
+            const cellValue = row[targetColumn];
+            if (cellValue === undefined || cellValue === null || String(cellValue).trim() === '') {
+              data[index][targetColumn] = replacementValue;
+              rowsAffected++;
+            }
+          });
+
+          if (rowsAffected > 0) {
+            appliedActions.push({
+              description: `Filled ${rowsAffected} missing/empty values in '${targetColumn}' with '${replacementValue}'`,
+              affectedRows: rowsAffected,
+              affectedColumns: [targetColumn]
+            });
+            actionsApplied++;
+            rowsModified += rowsAffected;
+          }
+        } else {
+          appliedActions.push({
+            description: `Attempted to fill missing values in '${columnName}', but column was not found.`,
+            affectedRows: 0,
+            affectedColumns: []
+          });
+        }
+        fillProcessed = true;
+        break; // Processed with a fill pattern, no need to check other fill patterns or generic replace
+      }
+    }
+    // ===== END: NEW - Specific handling for "fill missing/null/empty" commands =====
+    
+    // Process find and replace commands (only if not processed by fill patterns)
+    if (!fillProcessed && (command.includes('change') || command.includes('replace') || 
+        (command.includes('set') && command.includes('to')))) {
       
       // Much more flexible regex that handles various command formats
       // This will capture the find value, replace value, and column name in many different phrasings
@@ -403,117 +458,6 @@ export async function processDirectCsv(input: CsvProcessingInput): Promise<CsvPr
           });
           actionsApplied++;
           rowsModified += rowsAffected;
-        }
-      }
-    }
-    
-    // Process fill missing values commands
-    if (command.includes('fill') && command.includes('missing')) {
-      // Extract column name
-      const columnRegex = /(?:in|column|field)\s+['"]*([^'"]+)['"]*|['"]*([^'"]+)['"]*\s+(?:column|field)/i;
-      const columnMatch = columnRegex.exec(input.commands);
-      let targetColumn = null;
-      
-      if (columnMatch) {
-        const extractedName = columnMatch[1] || columnMatch[2];
-        targetColumn = headers.find(h => h.toLowerCase() === extractedName.toLowerCase().trim());
-      }
-      
-      if (targetColumn) {
-        let fillValue: string | number = '';
-        let rowsAffected = 0;
-        
-        // Determine fill method/value
-        if (command.includes('mean') || command.includes('average')) {
-          // Calculate mean of numeric values
-          const numValues = data
-            .map(row => {
-              const val = row[targetColumn];
-              return val !== undefined && val !== null ? parseFloat(String(val)) : NaN;
-            })
-            .filter(v => !isNaN(v));
-          
-          if (numValues.length > 0) {
-            const sum = numValues.reduce((acc, val) => acc + val, 0);
-            fillValue = parseFloat((sum / numValues.length).toFixed(2));
-          }
-        } else if (command.includes('median')) {
-          // Calculate median of numeric values
-          const numValues = data
-            .map(row => {
-              const val = row[targetColumn];
-              return val !== undefined && val !== null ? parseFloat(String(val)) : NaN;
-            })
-            .filter(v => !isNaN(v))
-            .sort((a, b) => a - b);
-          
-          if (numValues.length > 0) {
-            const mid = Math.floor(numValues.length / 2);
-            fillValue = numValues.length % 2 === 0
-              ? parseFloat(((numValues[mid - 1] + numValues[mid]) / 2).toFixed(2))
-              : parseFloat(numValues[mid].toFixed(2));
-          }
-        } else if (command.includes('mode')) {
-          // Find most common value
-          const valueCounts: Record<string, number> = {};
-          data.forEach(row => {
-            const val = row[targetColumn];
-            if (val !== undefined && val !== null && String(val).trim() !== '') {
-              const strVal = String(val);
-              valueCounts[strVal] = (valueCounts[strVal] || 0) + 1;
-            }
-          });
-          
-          let maxCount = 0;
-          let modeValue = '';
-          for (const [val, count] of Object.entries(valueCounts)) {
-            if (count > maxCount) {
-              maxCount = count;
-              modeValue = val;
-            }
-          }
-          
-          fillValue = modeValue;
-        } else {
-          // Extract explicit fill value
-          const valueRegex = /(?:with|using|to)\s+['"]*([^'"]+)['"]*|['"]*([^'"]+)['"]*\s+(?:value|values)/i;
-          const valueMatch = valueRegex.exec(input.commands);
-          
-          if (valueMatch) {
-            fillValue = valueMatch[1] || valueMatch[2];
-            
-            // Convert to number if appropriate
-            const asNum = parseFloat(String(fillValue));
-            if (!isNaN(asNum) && String(asNum) === String(fillValue)) {
-              fillValue = asNum;
-            }
-          } else {
-            fillValue = "N/A"; // Default
-          }
-        }
-        
-        // Apply the fill
-        if (fillValue !== '') {
-          data.forEach((row, index) => {
-            const cellValue = row[targetColumn];
-            
-            if (cellValue === undefined || 
-                cellValue === null || 
-                String(cellValue).trim() === '') {
-              data[index][targetColumn] = fillValue;
-              rowsAffected++;
-            }
-          });
-          
-          if (rowsAffected > 0) {
-            appliedActions.push({
-              description: `Filled ${rowsAffected} missing values in '${targetColumn}' column with: ${fillValue}`,
-              affectedRows: rowsAffected,
-              affectedColumns: [targetColumn]
-            });
-            actionsApplied++;
-            rowsModified += rowsAffected;
-          }
         }
       }
     }

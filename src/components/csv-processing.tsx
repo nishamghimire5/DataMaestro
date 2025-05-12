@@ -167,7 +167,7 @@ export default function CsvProcessing() {
   
   // Add state for LLM model selection
   const [selectedModel, setSelectedModel] = useState<LlmModel>(LlmModel.DEFAULT);
-  const [geminiModel, setGeminiModel] = useState<string>('gemini-pro');
+  const [geminiModel, setGeminiModel] = useState<string>('gemini-2.0-flash');
   const [ollamaModel, setOllamaModel] = useState<string>('deepseek:latest');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -977,9 +977,7 @@ export default function CsvProcessing() {
                         <SelectValue placeholder="Select Gemini model" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
-                        <SelectItem value="gemini-1.0-pro">Gemini 1.0 Pro</SelectItem>
-                        <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
+                        <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
