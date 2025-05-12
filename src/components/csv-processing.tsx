@@ -31,7 +31,7 @@ import { Loader2, AlertTriangle, Download, FileText, CheckCircle, BarChartHorizo
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Accordion } from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Switch } from '@/components/ui/switch';
 import SuggestionItem from './suggestion-item';
 import { ScrollArea } from './ui/scroll-area'; 
@@ -1018,10 +1018,86 @@ export default function CsvProcessing() {
                 rows={5}
                 disabled={isProcessingCommands}
                 className="text-sm mb-2"
-              />
-              <p className="text-xs text-muted-foreground mb-3">
-                Simply describe what you want to do with your data in plain English. The AI will interpret your commands and apply the changes directly.
+              />              <p className="text-xs text-muted-foreground mb-3">
+                For best results, use one of the command formats shown in the documentation below.
               </p>
+              <Accordion type="single" collapsible className="w-full mb-3">
+                <AccordionItem value="command-format">
+                  <AccordionTrigger className="text-primary-foreground font-medium">
+                    <Info className="h-4 w-4 mr-2" /> Command Format Documentation
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="mt-2 space-y-4">
+                      <div>
+                        <h4 className="font-medium">1. Find and Replace</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>replace "text to find" with "replacement text" in "Column Name"</code>
+                        </div>
+                        <p className="text-xs text-muted-foreground">For removing "Type" from Supermarket values:</p>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>replace " Type1" with "" in "Outlet_Type"</code><br/>
+                          <code>replace " Type2" with "" in "Outlet_Type"</code><br/>
+                          <code>replace " Type3" with "" in "Outlet_Type"</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">2. Round Numeric Values</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>round "Column Name" to 2 decimal places</code>
+                        </div>
+                        <p className="text-xs text-muted-foreground">For your specific case:</p>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>round "Item_MRP" to 2 decimal places</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">3. Fill Missing Values</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>fill missing in "Column Name" with "value"</code>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Examples:</p>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>fill missing values in "Weight" with "0"</code><br/>
+                          <code>fill nulls in "Category" with "Unknown"</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">4. Standardize Values</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>standardize "Column Name" to "standard value" for values [value1, value2, value3]</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">5. Case Conversion</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>convert "Column Name" to uppercase</code><br/>
+                          <code>convert "Column Name" to lowercase</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">6. Sorting</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>sort by "Column Name" ascending</code><br/>
+                          <code>sort by "Column Name" descending numerically</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">7. Filtering (Keep/Remove Rows)</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>keep rows where "Column Name" equals "value"</code><br/>
+                          <code>remove rows where "Column Name" contains "value"</code>
+                        </div>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
               <Button
                 onClick={handleProcessWithCommands}
                 disabled={isProcessingCommands || !directCommands.trim() || !currentCsvData}
