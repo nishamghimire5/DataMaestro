@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -255,7 +254,7 @@ export default function DataStandardization({ onValidation }: DataStandardizatio
                  </div>
                 <div className="space-y-1">
                     <p className="text-muted-foreground">Standardized Value</p>
-                    <p className="font-mono bg-primary/10 text-primary-foreground px-1 rounded break-all font-semibold">{result.standardizedValue}</p>
+                    <p className="font-mono bg-primary/10 text-green-700 px-1 rounded break-all font-semibold">{result.standardizedValue}</p>
                 </div>
                 {result.explanation && (
                     <div className="space-y-1 md:col-span-2">
