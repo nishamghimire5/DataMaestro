@@ -239,10 +239,13 @@ This is the central hub for CSV-related tasks.
 
 - **Input:** CSV data, a natural language command, and the selected LLM.
 - **Process:**
-  1.  Defines a prompt for the LLM to interpret the command and translate it into specific data modifications.
-  2.  The AI is instructed to identify target columns, extract literal values for filling/replacement, and determine the operation.
-  3.  If AI processing fails or for very simple commands, it includes **fallback logic** using basic regex pattern matching for fill/replace and case conversion commands.
-- **Output:** Modified CSV data and a summary.
+  1.  The user provides a natural language command via the UI (`csv-processing.tsx`).
+  2.  This command, along with the CSV data (parsed into a JavaScript structure by PapaParse), is sent to the `csv-direct-commands.ts` AI flow.
+  3.  The flow defines a prompt for the selected LLM to interpret the natural language command. The LLM's role is to understand the user's intent and translate it into a structured plan or set of instructions for data modification (e.g., identify target columns, values for fill/replace, operation type). It does **not** directly output PapaParse commands.
+  4.  JavaScript/TypeScript code within the AI flow then takes this structured interpretation from the LLM and programmatically applies the changes to the PapaParse-d JavaScript data structure (e.g., an array of objects representing rows).
+  5.  If AI processing fails to interpret the command or for very simple commands, the flow includes **fallback logic**. This typically involves using basic regex pattern matching (similar to `csv-direct-processor.ts`) for operations like fill/replace and case conversion directly on the JavaScript data structure.
+  6.  After the data structure is modified (either by AI-driven logic or the fallback), PapaParse is used again to _unparse_ the JavaScript data structure back into a CSV formatted string.
+- **Output:** Modified CSV data (as a string) and a summary of changes, which are then displayed in the UI.
 
 #### SQL Mode (`csv-direct-sql-processor.ts` & `csv-sql-processing.ts`)
 
