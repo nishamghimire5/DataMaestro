@@ -142,20 +142,21 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
       console.log(`[CSV Direct Commands] Using Ollama model: ${modelOptions.ollamaModel || 'gemma3:4b'}`);
     }
   }
+  // Validate CSV data
+  if (!input.csvData?.trim()) {
+    return {
+      processedCsvData: '',
+      summary: 'No CSV data provided.',
+      appliedActions: [{
+        description: "No processing performed - empty CSV data",
+        affectedRows: 0,
+        affectedColumns: []
+      }],
+      errorMessages: ['Missing or empty CSV data']
+    };
+  }
+  
   try {
-    // Validate CSV data
-    if (!input.csvData?.trim()) {
-      return {
-        processedCsvData: '',
-        summary: 'No CSV data provided.',
-        appliedActions: [{
-          description: "No processing performed - empty CSV data",
-          affectedRows: 0,
-          affectedColumns: []
-        }],
-        errorMessages: ['Missing or empty CSV data']
-      };
-    }
     
     if (!input.commands?.trim()) {
       return {
@@ -205,87 +206,77 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
       if (input.model === LlmModel.GEMINI) {
         // Always use the supported Gemini model, fully qualified
         aiSettings = { 
-          model: 'googleai/gemini-2.0-flash'
-          // provider: 'google' // This is likely not needed as 'googleai/gemini-2.0-flash' implies the provider
+          model: 'googleai/gemini-2.0-flash',
+          provider: 'google'
         };
-      } else if (input.model === LlmModel.OLLAMA) {
+      }      else if (input.model === LlmModel.OLLAMA) {
         // Configure for Ollama - use the ollamaModel from options or the actual model name from 'ollama list'
         const ollamaModel = input.modelOptions?.ollamaModel || 'gemma3:4b';
         
-        // Use the globally configured Ollama plugin by specifying the fully qualified model name
-        // This ensures Genkit uses the 'ollama' plugin defined in 'ai-instance.ts' which knows about 'gemma3:4b'
+        // Import the ollama function dynamically to avoid issues when not using it
+        const { ollama } = await import('genkitx-ollama');
+        
+        // Create an Ollama provider instance
         aiSettings = {
-          model: `ollama/${ollamaModel}` // e.g., "ollama/gemma3:4b"
+          model: ollamaModel,
+          provider: ollama({
+            serverAddress: 'http://localhost:11434',
+          })
         };
       }
       
-      // Try to get output from the AI with model settings
-      const { output } = await csvDirectCommandPrompt(input, aiSettings);
-      // If no error was thrown and output exists, use it
-      if (output) {
-        // CRITICAL FIX: Always ensure the summary property exists to avoid schema validation errors
-        if (!output.summary) {
-          console.warn("Missing 'summary' field in AI output - adding default summary to prevent schema validation errors");
+      try {
+        // Try to get output from the AI with model settings
+        const { output } = await csvDirectCommandPrompt(input, aiSettings);
+        
+        // If no error was thrown and output exists, use it
+        if (output) {
+          // Ensure all required fields exist
+          const ensuredOutput = {
+            processedCsvData: output.processedCsvData || input.csvData,
+            summary: output.summary || `Processed CSV based on command: ${input.commands}`,
+            appliedActions: (output.appliedActions || []).length > 0 ? output.appliedActions : [{
+              description: "Processing completed but no specific actions were reported",
+              affectedRows: 0,
+              affectedColumns: []
+            }],
+            errorMessages: output.errorMessages || []
+          };
+          
+          return ensuredOutput;
+        } else {
+          throw new Error("API returned empty response");
+        }
+      } catch (error: any) {
+        // Check if this is a schema validation error
+        if (error.message && error.message.includes('Schema validation failed')) {
+          console.error("Schema validation error:", error);
+          
+          // If there's a schema validation error, create a valid response with the user's command as summary
+          return {
+            processedCsvData: input.csvData,
+            summary: `Command was processed: ${input.commands}`,
+            appliedActions: [{
+              description: "Command processed with fallback handling due to schema validation error",
+              affectedRows: 0,
+              affectedColumns: []
+            }],
+            errorMessages: [`Schema validation error: ${error.message}`]
+          };
         }
         
-        // Ensure all required fields exist with strict checking for summary
-        const ensuredOutput = {
-          processedCsvData: output.processedCsvData || input.csvData,
-          summary: output.summary || `CSV processed with command: "${input.commands}"`, // Always provide a fallback summary
-          appliedActions: (output.appliedActions || []).length > 0 ? output.appliedActions : [{
-            description: "Processing completed but no specific actions were reported",
-            affectedRows: 0,
-            affectedColumns: []
-          }],
-          errorMessages: output.errorMessages || []
-        };
+        // If it's not a schema validation error, proceed with general error handling
+        console.error("Error during CSV command processing:", error);
         
-        return ensuredOutput;
-      } else {
-        // Even when the response is empty, provide a valid output with required fields
-        return {
-          processedCsvData: input.csvData,
-          summary: `Processing attempt with "${input.commands}" returned no output - using original data`,
-          appliedActions: [{
-            description: "No actions performed due to empty AI response",
-            affectedRows: 0,
-            affectedColumns: []
-          }],
-          errorMessages: ["API returned empty response"]
-        };
-      }
-        } catch (error: any) {
-      console.error("Error during CSV command processing:", error);
-      
-      // Check if the error is related to missing 'summary' field 
-      const isSummaryError = error?.message?.includes("must have required property 'summary'") || 
-                             error?.originalMessage?.includes("must have required property 'summary'");
-      
-      if (isSummaryError) {
-        console.log("Detected 'summary' field validation error - attempting to recover with fallback summary");
-        // If the only issue is missing summary, create a minimal valid response
-        return {
-          processedCsvData: input.csvData, // Keep original data
-          summary: `CSV processing command: "${input.commands}"`, // Provide required summary field
-          appliedActions: [{
-            description: "Processing attempted but encountered schema validation errors",
-            affectedRows: 0,
-            affectedColumns: []
-          }],
-          errorMessages: ["Schema validation error: missing summary field"]
-        };
-      }
-      
-      // Fallback to basic processing without AI for other errors
-      
-      // Parse the original data for processing
-      const csvRows = parseResult.data as Record<string, any>[];
-      const csvColumns = parseResult.meta.fields || [];
-      let processedCsvData = input.csvData;
-      let fallbackSummary = `Failed to process with AI. Command: "${input.commands}"`;
-      
-      // Attempt very basic fallback processing
-      const lowercaseCommand = input.commands.toLowerCase();
+        // Fallback to basic processing without AI
+        // Parse the original data for processing
+        const csvRows = parseResult.data as Record<string, any>[];
+        const csvColumns = parseResult.meta.fields || [];
+        let processedCsvData = input.csvData;
+        let fallbackSummary = `Failed to process with AI. Command: "${input.commands}"`;
+        
+        // Attempt very basic fallback processing
+        const lowercaseCommand = input.commands.toLowerCase();
       
       // ===== Pattern matching for various data replacement commands =====
       
@@ -464,18 +455,12 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
         }],
         errorMessages: [`Error during processing: ${error.message}`]
       };
-    }  } catch (finalError: any) {
+    } catch (finalError: any) {
     // Last resort error handler
     console.error("Critical error in CSV command processing:", finalError);
-    
-    // Always ensure we have a valid summary that includes the user's command
-    const finalSummary = input.commands ? 
-      `Critical error occurred while processing command: "${input.commands}"` :
-      "Critical error occurred during CSV processing";
-      
     return {
       processedCsvData: input.csvData || '',
-      summary: finalSummary, // Make sure summary is detailed and never empty
+      summary: "Critical error occurred during CSV processing",
       appliedActions: [{
         description: "Failed to process due to system error",
         affectedRows: 0,

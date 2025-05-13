@@ -43,6 +43,7 @@
     "firebase": "^11.3.0",
     "geist": "^1.3.1",
     "genkit": "^1.6.2",
+    "genkitx-ollama": "^1.8.0",
     "lucide-react": "^0.475.0",
     "next": "^15.3.2",
     "papaparse": "^5.4.1",
