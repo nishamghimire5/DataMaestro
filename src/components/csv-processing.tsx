@@ -1018,12 +1018,13 @@ export default function CsvProcessing() {
                 rows={5}
                 disabled={isProcessingCommands}
                 className="text-sm mb-2"
-              />              <p className="text-xs text-muted-foreground mb-3">
-                For best results, use one of the command formats shown in the documentation below.
+              />
+              <p className="text-xs text-muted-foreground mb-3">
+                For best results, click on the "Command Format Documentation" section below to see example command formats.
               </p>
               <Accordion type="single" collapsible className="w-full mb-3">
                 <AccordionItem value="command-format">
-                  <AccordionTrigger className="text-primary-foreground font-medium">
+                  <AccordionTrigger className="text-primary font-medium">
                     <Info className="h-4 w-4 mr-2" /> Command Format Documentation
                   </AccordionTrigger>
                   <AccordionContent>
