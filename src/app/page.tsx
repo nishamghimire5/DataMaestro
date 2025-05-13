@@ -1,4 +1,3 @@
-
 'use client'; // Required for state management and hooks
 
 import React, { useState, useCallback } from 'react';
@@ -141,28 +140,36 @@ export default function Home() {
             <SidebarGroupLabel>Core Features</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton href="#anomaly-detection" tooltip="Anomaly Detection">
-                  <ScanSearch />
-                  <span>Anomaly Detection</span>
-                </SidebarMenuButton>
+                <a href="#anomaly-detection">
+                  <SidebarMenuButton tooltip="Anomaly Detection">
+                    <ScanSearch />
+                    <span>Anomaly Detection</span>
+                  </SidebarMenuButton>
+                </a>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton href="#standardization" tooltip="Data Standardization">
-                  <FileCheck2 />
-                  <span>Data Standardization</span>
-                </SidebarMenuButton>
+                <a href="#standardization">
+                  <SidebarMenuButton tooltip="Data Standardization">
+                    <FileCheck2 />
+                    <span>Data Standardization</span>
+                  </SidebarMenuButton>
+                </a>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton href="#csv-processing" tooltip="CSV Processing">
-                  <TableProperties />
-                  <span>CSV Processing</span>
-                </SidebarMenuButton>
+                <a href="#csv-processing">
+                  <SidebarMenuButton tooltip="CSV Processing">
+                    <TableProperties />
+                    <span>CSV Processing</span>
+                  </SidebarMenuButton>
+                </a>
               </SidebarMenuItem>
                <SidebarMenuItem>
-                <SidebarMenuButton href="#profiling" tooltip="Data Profiling">
-                  <ClipboardList />
-                  <span>Data Profiling</span>
-                </SidebarMenuButton>
+                <a href="#profiling">
+                  <SidebarMenuButton tooltip="Data Profiling">
+                    <ClipboardList />
+                    <span>Data Profiling</span>
+                  </SidebarMenuButton>
+                </a>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroup>
@@ -171,16 +178,20 @@ export default function Home() {
              <SidebarGroupLabel>Evaluation &amp; Analysis</SidebarGroupLabel>
              <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton href="#evaluation" tooltip="Evaluation Dashboard">
-                    <Target />
-                    <span>Evaluation</span>
-                  </SidebarMenuButton>
+                  <a href="#evaluation">
+                    <SidebarMenuButton tooltip="Evaluation Dashboard">
+                      <Target />
+                      <span>Evaluation</span>
+                    </SidebarMenuButton>
+                  </a>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton href="#issue-log" tooltip="Issue Log">
-                    <ListX />
-                    <span>Issue Log</span>
-                  </SidebarMenuButton>
+                  <a href="#issue-log">
+                    <SidebarMenuButton tooltip="Issue Log">
+                      <ListX />
+                      <span>Issue Log</span>
+                    </SidebarMenuButton>
+                  </a>
                 </SidebarMenuItem>
              </SidebarMenu>
           </SidebarGroup>
