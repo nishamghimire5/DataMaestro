@@ -2,9 +2,19 @@
 
 ## Core Features:
 
-- Data Anomaly Detection: Use an LLM to identify and flag inconsistencies and errors in customer data. The LLM will act as a tool to identify anomalies.
-- Data Standardization: Leverage an LLM to standardize data formats (e.g., date formats, address formats) across the CDP. The LLM will act as a tool to determine and apply correct formats.
-- Human-in-the-Loop Validation: Provide a user interface to review and approve/reject the changes suggested by the LLM.
+- AI-Powered CSV Cleaning (suggestions, user instructions, LLM choice)
+- Iterative Processing
+- Direct Command Mode (NL commands for CSV, LLM interpretation, regex fallback)
+- SQL Mode (AI-assisted and direct processing)
+- Pandas-like Processing (Experimental)
+- Data Profiling (CSV or JSON)
+- Data Anomaly Detection
+- Data Standardization
+- Human-in-the-Loop Validation
+- Evaluation Dashboard
+- Issue Log
+- Responsive UI
+- Toast Notifications
 
 ## Style Guidelines:
 
