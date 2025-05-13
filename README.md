@@ -21,7 +21,7 @@ Follow these instructions to get a local copy up and running.
 
 - **Node.js**: Make sure you have Node.js installed. You can download it from [nodejs.org](https://nodejs.org/). (Check `package.json` for specific version compatibility if listed under `engines`, otherwise a recent LTS version should work).
 - **npm** or **yarn**: These package managers come with Node.js. This project uses npm based on the `package.json`.
-- **(Optional) Ollama**: If you intend to use local LLMs via Ollama, ensure Ollama is installed and running. You can find installation instructions at [ollama.com](https://ollama.com/). You will also need to pull the models specified in the application (e.g., `deepseek-r1:1.5b`).
+- **(Optional) Ollama**: If you intend to use local LLMs via Ollama, ensure Ollama is installed and running. You can find installation instructions at [ollama.com](https://ollama.com/). You will also need to pull the models specified in the application (e.g., `gemma3:4b`).
 
 ### Installation & Setup
 
@@ -175,7 +175,7 @@ While LLMs are powerful, this project also incorporates direct processors (for c
 
 ## Troubleshooting
 
-- **Ollama Model Not Found (e.g., `Error: Model 'model-name:latest' not found`):**
+- **Ollama Model Not Found (e.g., `Error: Model 'model-name' not found`):**
   - Ensure Ollama is running.
   - Verify the model name and tag are correct. You can list your locally available Ollama models using `ollama list` in your terminal.
   - If the model is not present locally, pull it using `ollama pull model-name:tag`.

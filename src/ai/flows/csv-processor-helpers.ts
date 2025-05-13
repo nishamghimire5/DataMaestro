@@ -87,7 +87,7 @@ Make sure to use 'df' as the variable name for the DataFrame.
       return await callGemini(prompt, modelOptions.geminiModel || 'gemini-pro');
     } 
     else if (model === LlmModel.OLLAMA) {
-      return await callOllama(prompt, modelOptions.ollamaModel || 'deepseek:latest');
+      return await callOllama(prompt, modelOptions.ollamaModel || 'gemma3:4b');
     }
     // Fallback for LlmModel.DEFAULT or if other models fail before this point in logic
     return `
@@ -133,7 +133,7 @@ Assume the table name is 'csv_data'.
       return await callGemini(prompt, modelOptions.geminiModel || 'gemini-pro');
     } 
     else if (model === LlmModel.OLLAMA) {
-      return await callOllama(prompt, modelOptions.ollamaModel || 'deepseek:latest');
+      return await callOllama(prompt, modelOptions.ollamaModel || 'gemma3:4b');
     }
     // Fallback for LlmModel.DEFAULT
     return `SELECT * FROM csv_data WHERE ${command.replace(/'/g, "''")}`; // Basic escaping for SQL

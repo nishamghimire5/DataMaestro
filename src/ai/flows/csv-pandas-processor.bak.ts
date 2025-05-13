@@ -18,7 +18,7 @@ type OllamaClient = {
 // Create Ollama client with fetch API
 const createOllamaClient = (): OllamaClient => {
   return {
-    generateText: async (prompt: string, model: string = 'deepseek:latest') => {
+    generateText: async (prompt: string, model: string = 'gemma3:4b') => {
       try {
         const response = await fetch('http://localhost:11434/api/generate', {
           method: 'POST',
@@ -56,7 +56,7 @@ type CsvPandasProcessInput = {
   model?: LlmModel; // Add model selection option
   modelOptions?: {
     geminiModel?: string; // e.g., 'gemini-pro'
-    ollamaModel?: string; // e.g., 'deepseek:latest' or 'deepseek-coder'
+    ollamaModel?: string; // e.g., 'gemma3:4b'
   };
 };
 
@@ -109,7 +109,7 @@ Please generate a complete SQL query that will achieve this. Only return the SQL
     } 
     else if (model === LlmModel.OLLAMA) {
       const ollamaClient = createOllamaClient();
-      const ollamaModel = modelOptions.ollamaModel || 'deepseek:latest';
+      const ollamaModel = modelOptions.ollamaModel || 'gemma3:4b';
       const result = await ollamaClient.generateText(prompt, ollamaModel);
       return extractCodeFromResponse(result, 'sql');
     }
@@ -159,7 +159,7 @@ Make sure to use 'df' as the variable name for the DataFrame.
     } 
     else if (model === LlmModel.OLLAMA) {
       const ollamaClient = createOllamaClient();
-      const ollamaModel = modelOptions.ollamaModel || 'deepseek:latest';
+      const ollamaModel = modelOptions.ollamaModel || 'gemma3:4b';
       const result = await ollamaClient.generateText(prompt, ollamaModel);
       return extractCodeFromResponse(result, 'python');
     }
