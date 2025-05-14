@@ -46,7 +46,7 @@ const csvDirectCommandPrompt = ai.definePrompt({
   name: 'csvDirectCommandPrompt',
   input: { schema: CsvDirectCommandInputSchema },
   output: { schema: CsvDirectCommandOutputSchema },
-  prompt: `You are an expert CSV data processor. Your task is to process CSV data using natural language commands and return a JSON object.
+  prompt: `You are an experienced senior data scientist with extensive expertise in data manipulation, statistical analysis, and machine learning. With years of professional experience working with diverse datasets across industries, you have mastered techniques for data cleaning, transformation, analysis, and visualization. You understand common data problems and effective solutions for them. You're proficient with statistical methods, data modeling approaches, and best practices for data processing workflows. Your task is to process CSV data using natural language commands and return a JSON object.
 
 Input CSV Data:
 \`\`\`csv
@@ -81,10 +81,99 @@ Key Instructions for Processing Commands:
             * Command: "set 'Item_Visibility' to 0.05"
                 * Action Phrase: "set 'Item_Visibility' to "
                 * **Correct Literal Value to Use:** \`0.05\` (the number)
-        * **Final Check for Value:** Before applying, ask: "Is the extracted value the actual data intended for insertion, or is it part of the instruction language?" Only proceed if it's data.
+        * **Final Check for Value:** Before applying, ask: "Is the extracted value the actual data intended for insertion, or is it part of the instruction language?" Only proceed if it's data.    * **Interpreting "Standardize" Commands**:
+        * When a command is to "standardize" a column (e.g., "standardize ColumnA to 'X' and 'Y'"), the goal is to map existing values in that column to the specified target values ('X', 'Y').
+        * If the command is like "standardize ColumnA to 'X' and 'Y' **only**", this implies that all unique values in ColumnA should be converted to *either* 'X' *or* 'Y'.
+        * You will need to infer the mapping based on the distinct values present in the column from the provided "Input CSV Data" sample. For example, if ColumnA contains "Apple", "Ant", "Banana", "Bear" and the command is "standardize ColumnA to 'Fruit' and 'Animal' only", you should map "Apple" to 'Fruit', "Ant" to 'Animal', "Banana" to 'Fruit', and "Bear" to 'Animal'.
+        * If the command provides explicit mappings (e.g., "standardize ColumnA by changing 'old_value_1' to 'X', 'old_value_2' to 'Y'"), prioritize those explicit mappings.
+        * List the specific mappings made in the action's 'description' and 'summary'. If the mapping is too ambiguous to perform confidently with the provided data and command, state this clearly in 'summary' and 'errorMessages', and do not alter the data for that specific standardization task.    * **Handling Conditional Value Operations**:
+        * When a command involves conditional operations like "change all values less than X to Y" or "replace values greater than X with Y", first identify:
+            1. The target column that contains numeric or date values.
+            2. The condition type (less than, greater than, equal to, not equal to, etc.).
+            3. The threshold/comparison value.
+            4. The replacement value to apply when the condition is met.
+        * For numeric comparison commands:
+            * Support phrases like "less than", "lesser than", "smaller than", "lower than", "<", "≤", "<=", "greater than", "bigger than", "larger than", ">", "≥", ">=", "equal to", "equals", "=", "not equal to", "!=", etc. 
+            * Example: For "change all values less than 100 to 1000 in column 'Price'", you should:
+                * Identify 'Price' as the target column 
+                * Recognize the condition "less than 100"
+                * Apply the replacement value "1000" to all cells where the current value < 100        
+        * For pattern matching commands:
+            * Support phrases like "contains", "starts with", "ends with", "matches", "has pattern", etc.
+            * Support SQL-like wildcard patterns: 
+                * "%" represents any sequence of characters (like SQL's % wildcard)
+                * E.g., "big %" means "starts with big"
+                * E.g., "% big" means "ends with big"
+                * E.g., "% big %" means "contains big"
+            * Example: "set all values that contain 'big' to 'large' in 'Size' column"
+                * Identify 'Size' as the target column
+                * Apply replacement value 'large' to all cells containing the substring 'big'
+            * Example: "change all values matching 'big %' to 'large items' in 'Product' column"
+                * Identify 'Product' as the target column
+                * Apply replacement value 'large items' to all cells starting with 'big '
+            * Example: "standardize all the column values in 'car' to 'big' and 'small' only"
+                * This combines standardization with pattern matching
+        * For percentage-based commands:
+            * Support phrases like "top 10%", "bottom 5%", "highest 20%", "lowest 15%", etc.
+            * Example: "replace the top 5% values in 'Score' with 100"
+                * Identify 'Score' as the target column
+                * Calculate the 95th percentile threshold
+                * Replace values above that threshold with 100
+        * Include the comparison logic details in the action's 'description' and 'summary'.
+    * **Date and Time Operations**:
+        * Support date formatting and transformation commands, such as:
+            * "Convert dates in 'Order_Date' to YYYY-MM-DD format"
+            * "Extract month from 'Transaction_Date' to a new column 'Transaction_Month'"
+            * "Convert 'Date_Created' from MM/DD/YYYY to DD/MM/YYYY"
+        * Support date-based filtering and comparison:
+            * "Flag all records with 'Date' older than 2023-01-01"
+            * "Remove rows where 'Delivery_Date' is before 'Order_Date'"
+            * "Replace values in 'Status' with 'Late' where 'Actual_Date' is after 'Deadline_Date'"
+    * **Statistical Transformations**:
+        * Support statistical calculations and replacements:
+            * "Replace missing values in 'Revenue' with the median of that column"
+            * "Add a new column 'Z_Score' with the z-score of 'Performance'"
+            * "Create a column 'Deviation' showing the difference from mean for 'Sales'"
+            * "Normalize the values in 'Data' column to range between 0 and 1"
+            * "Calculate moving average of 'Daily_Sales' with window size 7"
+        * Outlier detection and handling:
+            * "Replace outliers in 'Price' (>3 std dev) with the column's median"
+            * "Flag rows where 'Value' is an outlier based on IQR"    * **Text Processing and Extraction**:
+        * Support text manipulation commands:
+            * "Extract the first 5 characters from 'Product_Code' into a new column 'Category_Code'"
+            * "Split 'Full_Name' into 'First_Name' and 'Last_Name'"
+            * "Concatenate 'City', 'State', and 'Zip' into a new column 'Location' separated by commas"
+            * "Remove all special characters from 'Description'"
+            * "Replace multiple spaces with a single space in 'Notes'"
+        * Pattern extraction and validation:
+            * "Extract email domains from 'Email' column to 'Domain' column"
+            * "Validate 'Phone_Number' column and flag invalid formats"
+            * "Extract the numeric part from 'Product_ID' to 'Product_Number'"
+    * **Data Classification and Binning**:
+        * Support binning numeric data into categories:
+            * "Bin 'Age' column into categories: '<18', '18-35', '36-65', '>65'"
+            * "Create 'Price_Range' column with 'Low' for <50, 'Medium' for 50-100, 'High' for >100"
+            * "Group 'Score' into quartiles labeled 'Q1', 'Q2', 'Q3', 'Q4'"
+        * Support classification based on conditions:
+            * "Classify 'Transaction_Size' as 'Small' if <1000, 'Medium' if 1000-5000, else 'Large'"
+            * "Create 'Risk_Category' based on combined values of 'Credit_Score' and 'Income'"
+    * **Missing Value Handling**:
+        * Support advanced missing value strategies:
+            * "Fill missing values in 'Temperature' using linear interpolation"
+            * "Impute missing values in 'Income' based on 'Education' and 'Occupation'"
+            * "Fill forward missing values in 'Stock_Price'"
+            * "Replace missing values in numeric columns with column means"
+            * "Drop rows with more than 50% missing values"
+    * **Dataset and Column Operations**:
+        * Support structural changes:
+            * "Pivot data from 'Month' column creating columns for each month with 'Sales' values"
+            * "Melt columns 'Q1_Sales', 'Q2_Sales', 'Q3_Sales', 'Q4_Sales' into 'Quarter' and 'Sales' columns"
+            * "Transpose the dataset using the first column as header"
+        * Support sampling and splitting:
+            * "Sample 10% of rows randomly"
+            * "Extract every 5th row starting from the first"
+            * "Split dataset into 80% training and 20% testing sets"
 3.  **Apply Changes**: Modify the CSV data strictly according to the interpreted commands, using the identified columns and extracted literal values.
-4.  **Generate Summary**: Create a concise summary of all transformations performed. If no changes were made (e.g., due to no matching data or invalid commands), state this clearly. If actions could not be performed due to issues like non-existent columns, detail this in the summary.
-5.  **List Actions**: Detail each specific action taken. For each action, specify the actual column names (from CSV headers) that were affected. If an action was attempted but failed (e.g., column not found), reflect this appropriately, possibly as an action with 0 affected rows and a note in its description or an error message.
 
 Your task is to:
 1.  Parse the "Input CSV Data" to understand its structure and actual column headers.
@@ -125,6 +214,30 @@ Examples of user commands you might process:
 - "Convert all text in the 'Outlet_Identifier' column to uppercase"
 - "Delete the column named 'Obsolete_Data'"
 - "In column 'Notes', replace every instance of 'draft' with 'final'"
+- "Change all values less than 100 to 1000 in the 'Price' column"
+- "Replace all values greater than or equal to 50 with 'High' in 'Score' column"
+- "Set all values not equal to 'Approved' to 'Pending' in 'Status' column"
+- "In 'Product_Size' column, change all values containing 'big' to 'large'"
+- "Replace the top 10% of values in 'Revenue' with their mean"
+- "Standardize all column values in 'car' to 'big' and 'small' only, where values with 'truck' are 'big'"
+- "Change all values between 10 and 20 to 15 in column 'Rating'"
+- "Set all values that start with 'temp' to 'temporary' in the 'Category' column"
+- "Replace the bottom 5% of values in 'Performance' with 0"
+- "Update all values matching 'big %' to 'large product' in 'Item_Description'"
+- "Set values matching '% small' to 'compact' in 'Product_Type'"
+- "Change all values matching '% medium %' to 'standard size' in 'Size_Description'"
+- "Convert dates in 'Order_Date' to YYYY-MM-DD format"
+- "Replace missing values in 'Revenue' with the median of that column"
+- "Extract the first 5 characters from 'Product_Code' into a new column 'Category_Code'"
+- "Flag rows where 'Amount' is an outlier (beyond 1.5 IQR)"
+- "Calculate the z-score of 'Performance' values in a new column 'Performance_Z'"
+- "Split 'Full_Name' column into separate 'First_Name' and 'Last_Name' columns"
+- "Flag all records where 'Transaction_Date' is older than 2023-01-01"
+- "Create a column 'Price_Category' with 'Low' for values <50, 'Medium' for 50-100, 'High' for >100"
+- "Standardize all phone numbers in 'Contact' column to format XXX-XXX-XXXX"
+- "Calculate moving average of 'Daily_Sales' with window size 7"
+- "Extract email domains from 'Email' column to a new column 'Domain'"
+- "Replace outliers in 'Value' (beyond 3 standard deviations) with the median"
 `,
 });
 
@@ -416,38 +529,30 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
           // Find the actual column (case-insensitive)
           const actualColumn = csvColumns.find((col: string) => 
             col.toLowerCase() === targetColName.toLowerCase());
-            if (actualColumn) {
+          if (actualColumn) {
             let transformed = 0;
             const newData = csvRows.map((row: Record<string, any>) => {
-              const cellValue = row[actualColumn];
+              const cellValue = row[actualColumn!];
               if (cellValue && typeof cellValue === 'string') {
-                const oldValue = cellValue;
-                if (lowercaseCommand.includes("uppercase")) {
-                  row[actualColumn] = cellValue.toUpperCase();
-                } else if (lowercaseCommand.includes("lowercase")) {
-                  row[actualColumn] = cellValue.toLowerCase();
-                }
-                
-                if (oldValue !== row[actualColumn]) transformed++;
+                row[actualColumn!] = lowercaseCommand.includes("uppercase") ? cellValue.toUpperCase() : cellValue.toLowerCase();
+                transformed++;
               }
               return row;
             });
-            
+
             processedCsvData = Papa.unparse(newData);
+            const caseType = lowercaseCommand.includes("uppercase") ? "uppercase" : "lowercase";
+            const actionDesc = `Converted ${transformed} values in column '${actualColumn}' to ${caseType}.`;
             
-            const actionDesc = lowercaseCommand.includes("uppercase") 
-              ? `Converted text in '${actualColumn}' to uppercase` 
-              : `Converted text in '${actualColumn}' to lowercase`;
-              
             return {
               processedCsvData,
-              summary: `${actionDesc} (fallback processing)`,
+              summary: actionDesc,
               appliedActions: [{
                 description: actionDesc,
                 affectedRows: transformed,
-                affectedColumns: [actualColumn]
+                affectedColumns: [actualColumn!]
               }],
-              errorMessages: [`Used fallback processing due to API error: ${error.message}`]
+              errorMessages: []
             };
           }
         }

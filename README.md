@@ -160,8 +160,66 @@ Traditional CSV processing tools often require users to write complex scripts (e
 4.  **Flexibility:** They can adapt to a wide variety of CSV structures and data quality issues without needing pre-defined rules for every scenario.
 5.  **Efficiency for Exploratory Data Cleaning:** LLMs can accelerate the initial stages of data cleaning by quickly identifying common issues and proposing solutions, allowing data analysts to focus on more nuanced problems.
 6.  **Contextual Data Imputation:** When filling missing values, LLMs can potentially make more informed decisions based on the surrounding data and the inferred meaning of the column, rather than just statistical measures like mean or median.
+7.  **Advanced Data Operations:** The system supports a wide range of data processing capabilities including conditional operations with numeric comparisons and pattern matching, date/time operations, statistical transformations, text processing, data classification/binning, and dataset structure operations.
 
 While LLMs are powerful, this project also incorporates direct processors (for commands and SQL) which can be more efficient and deterministic for well-defined tasks, offering a hybrid approach.
+
+## Supported Natural Language Commands
+
+DataMaestro supports an extensive range of data processing operations through natural language commands:
+
+### Basic Operations
+
+- Find and replace text values
+- Standardize column values
+- Fill missing values
+- Convert case (uppercase/lowercase)
+- Sort data
+- Filter rows based on conditions
+- Remove duplicate rows
+- Round numeric values
+
+### Advanced Operations
+
+#### Conditional Operations
+
+- Numeric comparisons (less than, greater than, equal to)
+- Wildcard pattern matching (like "big %", "% big")
+- Percentage-based operations (e.g., "top 10%", "bottom 5%")
+
+#### Date and Time Operations
+
+- Format conversion (e.g., "Convert dates in 'Order_Date' to YYYY-MM-DD format")
+- Date extraction (e.g., "Extract month from 'Transaction_Date'")
+- Date-based filtering and comparison
+
+#### Statistical Transformations
+
+- Z-score calculations
+- Normalization
+- Moving averages
+- Outlier detection and handling
+- Statistical imputation (mean, median, etc.)
+
+#### Text Processing and Extraction
+
+- Character extraction
+- String splitting
+- Text concatenation
+- Pattern extraction (e.g., email domains)
+- Special character handling
+
+#### Data Classification and Binning
+
+- Numeric binning (e.g., age groups, price ranges)
+- Quartile-based classification
+- Multi-condition classification
+
+#### Dataset Structure Operations
+
+- Pivot tables
+- Melt operations (wide to long format)
+- Transpose operations
 
 ## Future Enhancements (Example Ideas)
 

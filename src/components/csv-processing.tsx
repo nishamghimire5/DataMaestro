@@ -1026,71 +1026,122 @@ export default function CsvProcessing() {
                 <AccordionItem value="command-format">
                   <AccordionTrigger className="text-primary font-medium">
                     <Info className="h-4 w-4 mr-2" /> Command Format Documentation
-                  </AccordionTrigger>
-                  <AccordionContent>
+                  </AccordionTrigger>                  <AccordionContent>
                     <div className="mt-2 space-y-4">
                       <div>
-                        <h4 className="font-medium">1. Find and Replace</h4>
+                        <h4 className="font-medium">1. Basic Operations</h4>
+                        <h5 className="text-xs font-semibold mt-2">Find and Replace</h5>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>replace "text to find" with "replacement text" in "Column Name"</code>
                         </div>
-                        <p className="text-xs text-muted-foreground">For removing "Type" from Supermarket values:</p>
+                        <p className="text-xs text-muted-foreground">Example:</p>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>replace " Type1" with "" in "Outlet_Type"</code><br/>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium">2. Round Numeric Values</h4>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Round Numeric Values</h5>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>round "Column Name" to 2 decimal places</code>
                         </div>
-                        <p className="text-xs text-muted-foreground">For your specific case:</p>
-                        <div className="bg-muted p-2 rounded my-1 text-xs">
-                          <code>round "Item_MRP" to 2 decimal places</code>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium">3. Fill Missing Values</h4>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Fill Missing Values</h5>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>fill missing in "Column Name" with "value"</code>
                         </div>
-                        <p className="text-xs text-muted-foreground">Examples:</p>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>fill missing values in "Weight" with "0"</code><br/>
                           <code>fill nulls in "Category" with "Unknown"</code>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium">4. Standardize Values</h4>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Standardize Values</h5>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>standardize "Column Name" to "standard value" for values [value1, value2, value3]</code>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium">5. Case Conversion</h4>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Case Conversion</h5>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>convert "Column Name" to uppercase</code><br/>
                           <code>convert "Column Name" to lowercase</code>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium">6. Sorting</h4>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Sorting</h5>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>sort by "Column Name" ascending</code><br/>
                           <code>sort by "Column Name" descending numerically</code>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium">7. Filtering (Keep/Remove Rows)</h4>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Filtering (Keep/Remove Rows)</h5>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>keep rows where "Column Name" equals "value"</code><br/>
                           <code>remove rows where "Column Name" contains "value"</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">2. Conditional Operations</h4>
+                        <h5 className="text-xs font-semibold mt-2">Numeric Comparisons</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>change all values less than 100 to 1000 in "Price" column</code><br/>
+                          <code>replace values greater than 50 with "High" in "Score" column</code><br/>
+                          <code>set all values not equal to "Approved" to "Pending" in "Status" column</code>
+                        </div>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Pattern Matching</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>replace values containing "big" with "large" in "Product_Size"</code><br/>
+                          <code>change values starting with "temp" to "temporary" in "Category"</code><br/>
+                          <code>set values matching "% small" to "compact" in "Product_Type"</code>
+                        </div>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Percentile Operations</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>replace the top 10% of values in "Revenue" with their mean</code><br/>
+                          <code>replace the bottom 5% of values in "Performance" with 0</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">3. Date and Time Operations</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>convert dates in "Order_Date" to YYYY-MM-DD format</code><br/>
+                          <code>extract month from "Transaction_Date" to a new column "Transaction_Month"</code><br/>
+                          <code>flag all records with "Date" older than 2023-01-01</code>
+                        </div>
+                      </div>
+                      
+                      <div>                        <h4 className="font-medium">4. Statistical Transformations</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>replace missing values in "Revenue" with the median of that column</code><br/>
+                          <code>add a new column "Z_Score" with the z-score of "Performance"</code><br/>
+                          <code>normalize values in "Data" column to range between 0 and 1</code><br/>
+                          <code>replace outliers in "Price" (&gt;3 std dev) with the column's median</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">5. Text Processing</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>extract the first 5 characters from "Product_Code" into "Category_Code"</code><br/>
+                          <code>split "Full_Name" into "First_Name" and "Last_Name"</code><br/>
+                          <code>concatenate "City", "State", and "Zip" into "Location" separated by commas</code><br/>
+                          <code>extract email domains from "Email" column to "Domain" column</code>
+                        </div>
+                      </div>
+                      
+                      <div>                        <h4 className="font-medium">6. Data Classification and Binning</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>bin "Age" column into categories: "&lt;18", "18-35", "36-65", "&gt;65"</code><br/>
+                          <code>create "Price_Range" with "Low" for &lt;50, "Medium" for 50-100, "High" for &gt;100</code><br/>
+                          <code>group "Score" into quartiles labeled "Q1", "Q2", "Q3", "Q4"</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">7. Dataset Structure Operations</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>pivot data from "Month" column creating columns for each month with "Sales" values</code><br/>
+                          <code>melt columns "Q1_Sales", "Q2_Sales", "Q3_Sales", "Q4_Sales" into "Quarter", "Sales"</code><br/>
+                          <code>transpose the dataset using the first column as header</code>
                         </div>
                       </div>
                     </div>
