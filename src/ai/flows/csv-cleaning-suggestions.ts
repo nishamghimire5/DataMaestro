@@ -206,13 +206,13 @@ const suggestCsvCleaningActionsFlow = ai.defineFlow(
              originalFragment: s.originalFragment || "N/A",
              suggestedFragment: s.suggestedFragment || "N/A",
              actionType: s.actionType || 'OTHER', // Fallback actionType
-         };
-
-         // Final check with Zod schema (optional but good practice)
+         };         // Final check with Zod schema (optional but good practice)
          try {
             CleaningSuggestionSchema.parse(cleanedSuggestion);
             suggestionMap.set(suggestionKey, cleanedSuggestion);
-         } catch (zodError) {
+         } catch (error: unknown) {
+             // Handle Zod error with proper type checking
+             const zodError = error instanceof Error ? error : new Error(String(error));
              console.warn(`Skipping suggestion due to schema validation failure. Key: ${suggestionKey}, Error: ${zodError.message}`);
              console.warn("Problematic suggestion data:", JSON.stringify(cleanedSuggestion, null, 2));
          }

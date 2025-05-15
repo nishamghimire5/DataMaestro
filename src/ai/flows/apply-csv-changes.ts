@@ -86,6 +86,32 @@ function calculateNumericStats(data: any[], columnName: string): { mean: number;
 }
 
 /**
+ * Search for a value in a column that matches the provided fragment
+ * This is used when a row-specific action fails to match at the specified row
+ */
+function findMatchingRowInColumn(
+  data: any[], 
+  columnName: string, 
+  cleanedFragmentToMatch: string, 
+  originalRowNumber: number
+): number | null {
+  // Look through all rows in the column to find a match
+  for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+    // Skip the original row that we already checked
+    if (rowIndex === originalRowNumber - 1) continue;
+    
+    const value = String(data[rowIndex][columnName]);
+    const cleanedValue = value.trim().toLowerCase().replace(/^["']|["']$/g, '');
+    
+    // Check if this row contains the value we're looking for
+    if (cleanedValue === cleanedFragmentToMatch) {
+      return rowIndex + 1; // Return 1-indexed row number
+    }
+  }
+  return null; // No match found in the column
+}
+
+/**
  * Apply suggested column-level changes to CSV data
  * Handles applying changes to all affected rows in a column
  */
@@ -231,6 +257,7 @@ export async function applyCsvApprovedChanges(input: ApplyCsvApprovedChangesInpu
       header: true,
       skipEmptyLines: true,
       dynamicTyping: false, // Keep as strings to avoid PapaParse's assumptions
+      transformHeader: header => header.trim()
     });
     
     if (parseResult.errors.length > 0) {
@@ -320,16 +347,68 @@ export async function applyCsvApprovedChanges(input: ApplyCsvApprovedChangesInpu
           if (rowIndex >= 0 && rowIndex < data.length) {
             const originalValue = String(data[rowIndex][currentHeaderName as keyof typeof data[0]]);
             let newValue = originalValue;
-            
+
             if (action.actionType === 'MODIFY_CELL') {
-              // For row-specific MODIFY_CELL, replace the value directly
-              if (originalValue === action.originalFragment || 
-                  action.originalFragment === "Cell value to be modified") {
-                newValue = suggested;
-              } else {
-                // If originalFragment doesn't match but rowNumber is specified, still apply
-                newValue = suggested;
-                console.warn(`OriginalFragment '${action.originalFragment}' didn't match '${originalValue}'. Applying suggested value based on row-specific instruction.`);
+              if (typeof action.originalFragment !== 'string' || typeof action.suggestedFragment !== 'string') {
+                const errorMsg = `Action ID ${action.id} (MODIFY_CELL): originalFragment ('${action.originalFragment}') or suggestedFragment ('${action.suggestedFragment}') is not a string. Row: ${action.rowNumber}, Col: ${currentHeaderName}. Change not applied.`;
+                actionErrors.push(errorMsg);
+                console.warn(errorMsg);
+              } else {                
+                const fragmentToMatch = action.originalFragment;
+                const suggestedValue = String(action.suggestedFragment ?? '').trim(); // Trim whitespace from suggestedFragment
+                const cleanedOriginalValue = originalValue.trim().toLowerCase().replace(/^["']|["']$/g, '');
+                const cleanedFragmentToMatch = fragmentToMatch.trim().toLowerCase().replace(/^["']|["']$/g, '');
+
+                console.log(`Row-specific MODIFY_CELL: Row ${action.rowNumber}, Col ${currentHeaderName}`);
+                console.log(`  Original Value: '${originalValue}' (cleaned: '${cleanedOriginalValue}')`);
+                console.log(`  Original Fragment: '${fragmentToMatch}' (cleaned: '${cleanedFragmentToMatch}')`);
+                console.log(`  Suggested Fragment: '${suggestedValue}'`);
+
+                let matchCriteriaMet = false;
+                if (fragmentToMatch === "Cell value to be modified") {
+                    console.log(`  Placeholder match criteria met ('Cell value to be modified').`);
+                    matchCriteriaMet = true;
+                } else if (cleanedOriginalValue === cleanedFragmentToMatch) {
+                    console.log(`  Flexible match criteria met.`);
+                    matchCriteriaMet = true;
+                } else if (originalValue === fragmentToMatch) { 
+                    console.log(`  Exact raw match criteria met.`);
+                    matchCriteriaMet = true;
+                }
+
+                if (matchCriteriaMet) {
+                    actionSucceeded = true; 
+                    if (originalValue !== suggestedValue) {
+                        newValue = suggestedValue;
+                        console.log(`  Applying suggestion. New value will be '${newValue}'.`);
+                    } else {
+                        console.log(`  Original value is already the same as suggested value. No change to cell content.`);
+                    }
+                } else { // if !matchCriteriaMet at original row
+                    // Original match failed, try findMatchingRowInColumn
+                    const matchingRow = findMatchingRowInColumn(data, currentHeaderName, cleanedFragmentToMatch, action.rowNumber);
+                    if (matchingRow !== null) {
+                      // Found the fragment in a different row
+                      console.warn(`Action ID ${action.id}: Original fragment '${fragmentToMatch}' (cleaned: '${cleanedFragmentToMatch}') not found at specified row ${action.rowNumber} (original cell value: '${originalValue}'). Found matching fragment at row ${matchingRow} in column ${currentHeaderName}. Applying change there.`);
+                      const matchingRowIndex = matchingRow - 1;
+                      const matchingRowOriginalValue = String(data[matchingRowIndex][currentHeaderName as keyof typeof data[0]]);
+                      
+                      if (matchingRowOriginalValue !== suggestedValue) {
+                        data[matchingRowIndex][currentHeaderName as keyof typeof data[0]] = suggestedValue;
+                        cellsChangedInThisAction++;
+                        console.log(`Modified: Row ${matchingRow}, Col ${currentHeaderName} from '${matchingRowOriginalValue}' to '${suggestedValue}'`);
+                      } else {
+                        console.log(`Row ${matchingRow}, Col ${currentHeaderName} already contains the suggested value '${suggestedValue}'. No change to cell content, but action considered successful due to match.`);
+                      }
+                      actionSucceeded = true; // Action succeeded because we found and handled it elsewhere
+                    } else {
+                      // Both original match and findMatchingRowInColumn failed. NOW it's a definitive error.
+                      const errorMsg = `Action ID ${action.id} (MODIFY_CELL): Original fragment '${fragmentToMatch}' (cleaned: '${cleanedFragmentToMatch}') did not match cell value '${originalValue}' (cleaned: '${cleanedOriginalValue}') at specified row ${action.rowNumber}, nor was a matching fragment found elsewhere in column ${currentHeaderName}. Change not applied.`;
+                      actionErrors.push(errorMsg);
+                      console.warn(errorMsg);
+                      // actionSucceeded remains false.
+                    }
+                }
               }
             } else if (action.actionType === 'STANDARDIZE_FORMAT') {
               // Basic standardization
@@ -337,29 +416,55 @@ export async function applyCsvApprovedChanges(input: ApplyCsvApprovedChangesInpu
               else if (suggested.toLowerCase().includes('lowercase')) newValue = originalValue.toLowerCase();
               else if (suggested.toLowerCase().includes('trim')) newValue = originalValue.trim();
               else newValue = suggested; // Fallback
+              actionSucceeded = true;
             } else if (action.actionType === 'FILL_MISSING') {
               const isMissing = originalValue === null || originalValue === undefined || originalValue.trim() === '';
-              if (isMissing) newValue = suggested;
+              if (isMissing) {
+                if (typeof action.suggestedFragment === 'string') {
+                  newValue = action.suggestedFragment;
+                  actionSucceeded = true;
+                } else {
+                  actionErrors.push(`Action ID ${action.id}: Suggested fragment is not a string for FILL_MISSING.`);
+                }
+              } else {
+                 actionSucceeded = true; // Condition for action (being non-missing) is met, even if no change.
+              }
             } else if (action.actionType === 'FILL_MISSING_NUMERIC') {
               const isMissing = originalValue === null || originalValue === undefined || originalValue.trim() === '' || isNaN(parseFloat(originalValue));
               if (isMissing && action.imputationMethod) {
                 const stats = statsCache.get(currentHeaderName);
                 if (stats && (action.imputationMethod === 'mean' || action.imputationMethod === 'median' || action.imputationMethod === 'mode')) {
-                  newValue = String(stats[action.imputationMethod]);
+                  if (typeof stats[action.imputationMethod] !== 'undefined') {
+                    newValue = String(stats[action.imputationMethod]);
+                    actionSucceeded = true;
+                  } else {
+                     actionErrors.push(`Action ID ${action.id}: Stat value for ${action.imputationMethod} is undefined in column ${currentHeaderName}`);
+                  }
+                } else {
+                  actionErrors.push(`Action ID ${action.id}: No stats available or invalid method for numeric imputation in column ${currentHeaderName}`);
                 }
-                else actionErrors.push(`Action ID ${action.id}: No stats available for numeric imputation in column ${currentHeaderName}`);
+              } else if (!isMissing) {
+                actionSucceeded = true; // Row is not missing, action considered "applied" in terms of check.
               }
             } else if (action.actionType === 'REVIEW_CONSISTENCY') {
-              newValue = action.userProvidedReplacement || suggested;
+              if (typeof action.userProvidedReplacement === 'string') {
+                newValue = action.userProvidedReplacement;
+                actionSucceeded = true;
+              } else if (typeof action.suggestedFragment === 'string') {
+                newValue = action.suggestedFragment;
+                actionSucceeded = true;
+              } else {
+                 actionErrors.push(`Action ID ${action.id}: No replacement provided for REVIEW_CONSISTENCY.`);
+              }
             }
             
-            if (newValue !== originalValue) {
+            if (actionSucceeded && newValue !== originalValue) {
               data[rowIndex][currentHeaderName as keyof typeof data[0]] = newValue;
               cellsChangedInThisAction++;
               console.log(`Modified: Row ${action.rowNumber}, Col ${currentHeaderName} from '${originalValue}' to '${newValue}'`);
+            } else if (actionSucceeded && newValue === originalValue) {
+              console.log(`Action for Row ${action.rowNumber}, Col ${currentHeaderName} succeeded but resulted in no change to cell value.`);
             }
-            
-            actionSucceeded = true;
           } else {
             actionErrors.push(`Action ID ${action.id}: Row number ${action.rowNumber} out of bounds after potential row removals`);
           }
@@ -371,10 +476,26 @@ export async function applyCsvApprovedChanges(input: ApplyCsvApprovedChangesInpu
             let shouldModify = false;
             
             if (action.actionType === 'MODIFY_CELL') {
-              // Column-wide MODIFY_CELL should match the originalFragment pattern
-              if (originalValue === action.originalFragment) {
-                newValue = suggested;
-                shouldModify = true;
+              if (typeof action.originalFragment !== 'string' || typeof action.suggestedFragment !== 'string') {
+                console.warn(`Action ID ${action.id} (MODIFY_CELL column-wide): originalFragment ('${action.originalFragment}') or suggestedFragment ('${action.suggestedFragment}') is undefined for column ${currentHeaderName}. Skipping this cell.`);
+              } else {
+                const cleanedOriginal = originalValue.trim().toLowerCase().replace(/^["']|["']$/g, '');
+                const cleanedFragment = action.originalFragment.trim().toLowerCase().replace(/^["']|["']$/g, '');
+                const suggestedValue = String(action.suggestedFragment ?? '').trim(); // Trim whitespace from suggestedFragment
+
+                console.log(`Column-wide MODIFY_CELL: Row ${rowIndex + 1}, Col ${currentHeaderName}`);
+                console.log(`  Original Value: '${originalValue}' (cleaned: '${cleanedOriginal}')`);
+                console.log(`  Original Fragment: '${action.originalFragment}' (cleaned: '${cleanedFragment}')`);
+                
+                if (cleanedOriginal === cleanedFragment) {
+                  shouldModify = true; // Mark that the rule matched
+                  if (originalValue !== suggestedValue) {
+                    newValue = suggestedValue;
+                    console.log(`  Match found. Applying suggestion '${suggestedValue}'.`);
+                  } else {
+                    console.log(`  Match found, but original value is already the same as suggested value.`);
+                  }
+                }
               }
             } else if (action.actionType === 'STANDARDIZE_FORMAT') {
               let standardized = originalValue;
@@ -400,8 +521,14 @@ export async function applyCsvApprovedChanges(input: ApplyCsvApprovedChangesInpu
             } else if (action.actionType === 'FILL_MISSING') {
               const isMissing = originalValue === null || originalValue === undefined || String(originalValue).trim() === '';
               if (isMissing) {
-                newValue = suggested;
-                shouldModify = true;
+                if (typeof action.suggestedFragment === 'string') {
+                  newValue = action.suggestedFragment;
+                  shouldModify = true;
+                } else {
+                  if (!actionErrors.some(e => e.includes(`Suggested fragment not string for FILL_MISSING col ${currentHeaderName}`))) {
+                     actionErrors.push(`Action ID ${action.id}: Suggested fragment is not a string for FILL_MISSING column ${currentHeaderName}.`);
+                  }
+                }
               }
             } else if (action.actionType === 'FILL_MISSING_NUMERIC') {
               const isMissingOrInvalid = originalValue === null || originalValue === undefined || 
@@ -419,9 +546,18 @@ export async function applyCsvApprovedChanges(input: ApplyCsvApprovedChangesInpu
               }
             } else if (action.actionType === 'REVIEW_CONSISTENCY') {
               // For column-wide REVIEW, apply if originalFragment matches
-              if (originalValue === action.originalFragment) {
-                newValue = action.userProvidedReplacement || suggested;
-                shouldModify = true;
+              if (typeof action.originalFragment === 'string' && originalValue === action.originalFragment) {
+                 if (typeof action.userProvidedReplacement === 'string') {
+                    newValue = action.userProvidedReplacement;
+                    shouldModify = true;
+                 } else if (typeof action.suggestedFragment === 'string') {
+                    newValue = action.suggestedFragment;
+                    shouldModify = true;
+                 } else {
+                    if (!actionErrors.some(e => e.includes(`No replacement for REVIEW_CONSISTENCY col ${currentHeaderName}`))) {
+                        actionErrors.push(`Action ID ${action.id}: No replacement string provided for REVIEW_CONSISTENCY column ${currentHeaderName} where originalFragment matched.`);
+                    }
+                 }
               }
             }
             
