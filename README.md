@@ -177,7 +177,6 @@ DataMaestro supports an extensive range of data processing operations through na
 - Sort data
 - Filter rows based on conditions
 - Remove duplicate rows
-- Round numeric values
 
 ### Advanced Operations
 

@@ -340,7 +340,6 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
         if (!output.summary) {
           console.warn("Missing 'summary' field in AI output - adding default summary to prevent schema validation errors");
         }
-        
         // Ensure all required fields exist with strict checking for summary
         const ensuredOutput = {
           processedCsvData: output.processedCsvData || input.csvData,
@@ -367,7 +366,7 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
           errorMessages: ["API returned empty response"]
         };
       }
-        } catch (error: any) {
+    } catch (error: any) {
       console.error("Error during CSV command processing:", error);
       
       // Check if the error is related to missing 'summary' field 
@@ -375,17 +374,89 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
                              error?.originalMessage?.includes("must have required property 'summary'");
       
       if (isSummaryError) {
-        console.log("Detected 'summary' field validation error - attempting to recover with fallback summary");
-        // If the only issue is missing summary, create a minimal valid response
-        return {
-          processedCsvData: input.csvData, // Keep original data
-          summary: `CSV processing command: "${input.commands}"`, // Provide required summary field
-          appliedActions: [{
-            description: "Processing attempted but encountered schema validation errors",
+        console.warn(`[CSV Direct Commands] AI output for command "${input.commands}" was missing the 'summary' field. Attempting to recover using AI's partial data if available, otherwise using original data with a fallback summary.`);
+
+        const attemptedAiOutput = (typeof error.detail === 'object' && error.detail !== null && !Array.isArray(error.detail)) 
+                                  ? error.detail as Partial<CsvDirectCommandOutput> 
+                                  : undefined;
+
+        // Use AI's processed data if available and non-empty, otherwise fall back to original input data.
+        const recoveredProcessedCsvData = (attemptedAiOutput?.processedCsvData && attemptedAiOutput.processedCsvData.trim() !== '') 
+                                          ? attemptedAiOutput.processedCsvData 
+                                          : input.csvData;
+        
+        let recoveredAppliedActions;
+        if (attemptedAiOutput?.appliedActions && Array.isArray(attemptedAiOutput.appliedActions) && attemptedAiOutput.appliedActions.length > 0) {
+          recoveredAppliedActions = attemptedAiOutput.appliedActions;
+        } else {
+          recoveredAppliedActions = [{
+            description: `Processing of command "${input.commands}" attempted, but AI response was incomplete (missing 'summary'). Actual actions performed by AI are unknown or partially reported.`,
             affectedRows: 0,
             affectedColumns: []
-          }],
-          errorMessages: ["Schema validation error: missing summary field"]
+          }];
+        }
+
+        const recoveredErrorMessages: string[] = [`AI response for command "${input.commands}" was missing the required 'summary' field.`];
+        if (attemptedAiOutput?.errorMessages && Array.isArray(attemptedAiOutput.errorMessages)) {
+          recoveredErrorMessages.push(...attemptedAiOutput.errorMessages);
+        }
+        
+        let processingMessage = "";
+        if (recoveredProcessedCsvData !== input.csvData) {
+          processingMessage = "used AI's processed data";
+          recoveredErrorMessages.push("Successfully recovered and used processed data from AI's partial response.");
+        } else if (attemptedAiOutput?.processedCsvData) { // AI data was present but falsy (e.g. empty string) or error.detail was not structured as expected
+          processingMessage = "original data returned (AI data was present but unusable/empty or not found in error details)";
+          recoveredErrorMessages.push("AI might have provided processed data, but it was empty, unusable, or not found in the expected error structure; original data is being returned.");
+        } else { // No processedCsvData found in attemptedAiOutput
+           processingMessage = "original data returned (no AI data found in error details)";
+           recoveredErrorMessages.push("No processed data was recoverable from AI's partial response; original data is being returned.");
+        }
+        
+        if (error.message && error.message !== recoveredErrorMessages[0]) { // Avoid duplicating the main known issue
+            recoveredErrorMessages.push(`Underlying error context: ${error.message}`);
+        }
+
+        let finalSummary: string;
+
+        if (recoveredProcessedCsvData !== input.csvData) { // AI's processed data was successfully recovered and used
+            // Check if recoveredAppliedActions are the actual actions from AI, not our fallback
+            const aiActions = (attemptedAiOutput?.appliedActions && 
+                             Array.isArray(attemptedAiOutput.appliedActions) && 
+                             attemptedAiOutput.appliedActions.length > 0 && 
+                             recoveredAppliedActions === attemptedAiOutput.appliedActions) 
+                            ? recoveredAppliedActions 
+                            : null;
+            
+            const firstActionDescription = aiActions?.[0]?.description;
+
+            if (firstActionDescription) {
+                finalSummary = `Recovered: ${firstActionDescription} (AI response was initially missing 'summary'). Data source: AI's processed data.`;
+                if (aiActions!.length > 1) { // aiActions is confirmed not null here
+                    finalSummary += ` And ${aiActions!.length - 1} other action(s).`;
+                }
+                // Append any AI-provided error messages to the summary if they exist and AI data was used.
+                if (attemptedAiOutput?.errorMessages && attemptedAiOutput.errorMessages.length > 0) {
+                    finalSummary += ` AI also reported: ${attemptedAiOutput.errorMessages.join('; ')}`;
+                }
+            } else {
+                // AI data used, but no usable description from AI's appliedActions, or aiActions were our fallback
+                finalSummary = `Successfully processed command "${input.commands}" using recovered AI data. (AI response was initially missing 'summary' or its action descriptions were empty/missing).`;
+                if (attemptedAiOutput?.errorMessages && attemptedAiOutput.errorMessages.length > 0) {
+                    finalSummary += ` AI also reported: ${attemptedAiOutput.errorMessages.join('; ')}`;
+                }
+            }
+        } else { // Original data is being returned (AI data not used or not available)
+            // processingMessage already explains why original data is returned.
+            finalSummary = `AI response for command "${input.commands}" was incomplete (missing 'summary'). ${processingMessage}.`;
+            // Note: If there was a different underlying error.message, it's already added to recoveredErrorMessages.
+        }
+
+        return {
+          processedCsvData: recoveredProcessedCsvData,
+          summary: finalSummary,
+          appliedActions: recoveredAppliedActions,
+          errorMessages: recoveredErrorMessages.filter((msg, index, self) => self.indexOf(msg) === index) // Deduplicate messages
         };
       }
       
@@ -425,7 +496,7 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
       // 6. Set empty/missing values pattern
       const setEmptyRegex = /set\s+(?:the\s+|all\s+)?(?:empty|missing|null|nulls)(?:\s+values?\s+)?(?:in|of|for|from)?\s+(?:(?:column|field|the\s+column)\s+)?['"]*([^'"]+)['"]*\s+(?:with|to|as)\s+['"]*([^'"]*)['"]*(?:\s|$)/i;
       const setEmptyMatch = setEmptyRegex.exec(input.commands);
-      
+
       // Function to process the matches and fill/replace values
       const processReplacement = (columnName: string, replacementValue: string, onlyReplaceEmpty: boolean = true, oldValue?: string) => {
         console.log(`[Command Processing] Detected command: Column='${columnName}', NewValue='${replacementValue}', OnlyReplaceEmpty=${onlyReplaceEmpty}${oldValue ? `, OldValue='${oldValue}'` : ''}`);
@@ -514,11 +585,10 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
         return processReplacement(setEmptyMatch[1].trim(), setEmptyMatch[2].trim(), true);
       }
       else if (replaceValueMatch && replaceValueMatch.length >= 4) {
-        // Note: For replaceValueMatch, the column is in position 3, and old/new values in 1/2
         return processReplacement(replaceValueMatch[3].trim(), replaceValueMatch[2].trim(), false, replaceValueMatch[1].trim());
       }
-      // ===== END pattern matching for data replacement commands =====
-      
+      // ===== END pattern matching =====
+
       if (lowercaseCommand.includes("uppercase") || lowercaseCommand.includes("lowercase")) {
         // Try to extract column name from command
         const columnMatch = /\b(?:in|column|field)\s+['"]*([^'"]+)['"]*\b/i.exec(input.commands);
