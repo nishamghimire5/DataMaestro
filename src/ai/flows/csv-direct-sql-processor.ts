@@ -1,9 +1,11 @@
 'use server';
 /**
- * @fileOverview Direct SQL Processing for CSV Data
+ * @fileOverview Enhanced Direct SQL Processing for CSV Data
  * 
  * A direct implementation of SQL-like processing for CSV data that
  * doesn't rely on AI model response schemas, avoiding validation errors.
+ * This version supports enhanced SQL commands including SELECT, UPDATE, and DELETE
+ * with LIKE, IN, and comparison operators.
  */
 
 import Papa from 'papaparse';
@@ -85,237 +87,22 @@ export async function processDirectSql(input: CsvSqlProcessInput): Promise<CsvSq
     let operation = 'UNKNOWN';
     let columnsAffected: string[] = [];
 
-    // Simple SQL parser for basic operations
-    // UPDATE operation
-    if (sqlQuery.toUpperCase().startsWith('UPDATE')) {
-      operation = 'UPDATE';
-      try {
-        // Parse the UPDATE statement
-        // Example: UPDATE data SET column1 = 'value' WHERE column2 = 'condition'
-        const updateRegex = /UPDATE\s+(?:data|table|\w+)\s+SET\s+([^=\s]+)\s*=\s*['"](.*?)['"](?:\s+WHERE\s+(.+))?/i;
-        const match = sqlQuery.match(updateRegex);
-        
-        if (!match) {
-          throw new Error('Invalid UPDATE syntax. Expected: UPDATE data SET column = \'value\' WHERE condition');
-        }
-        
-        let columnToUpdate = match[1]?.trim();
-        const newValue = match[2];
-        const whereClause = match[3];
-        
-        // Validate column name
-        if (!columnToUpdate || !headers.includes(columnToUpdate)) {
-          const similarColumn = headers.find(h => h.toLowerCase() === columnToUpdate.toLowerCase());
-          if (similarColumn) {
-            errors.push(`Column name case mismatch. Did you mean '${similarColumn}'?`);
-            columnToUpdate = similarColumn;
-          } else {
-            throw new Error(`Column '${columnToUpdate}' not found in data. Available columns: ${headers.join(', ')}`);
-          }
-        }
-        
-        columnsAffected.push(columnToUpdate);
-        
-        // Process the WHERE clause
-        if (whereClause) {
-          // Handle basic IN condition: WHERE column IN ('value1', 'value2', ...)
-          const inRegex = /([^=\s]+)\s+IN\s+\(\s*((?:['"][^'"]*['"](?:\s*,\s*['"][^'"]*['"])*)?)\s*\)/i;
-          const inMatch = whereClause.match(inRegex);
-          
-          if (inMatch) {
-            let whereColumn = inMatch[1]?.trim();
-            
-            // Validate where column name
-            if (!whereColumn || !headers.includes(whereColumn)) {
-              const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
-              if (similarWhereColumn) {
-                errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
-                whereColumn = similarWhereColumn;
-              } else {
-                throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
-              }
-            }
-            
-            // Parse the values in the IN clause
-            const valuesString = inMatch[2];
-            const valueRegex = /['"]([^'"]*)['"]/g;
-            const values: string[] = [];
-            
-            let valueMatch;
-            while ((valueMatch = valueRegex.exec(valuesString)) !== null) {
-              values.push(valueMatch[1]);
-            }
-            
-            if (values.length === 0) {
-              throw new Error('No values found in IN clause.');
-            }
-            
-            // Apply the update with IN condition
-            data.forEach((row, index) => {
-              const currentValue = String(row[whereColumn!]); // Added non-null assertion for whereColumn as it's validated
-              if (values.some(v => String(v).toLowerCase() === currentValue.toLowerCase())) {
-                if (data[index]) {
-                  (data[index] as CsvRow)[columnToUpdate!] = newValue; // Added non-null assertion
-                }
-                rowsAffected++;
-              }
-            });
-          } 
-          // Handle basic equality condition: WHERE column = 'value'
-          else {
-            const equalityRegex = /([^=\s]+)\s*=\s*['"]([^'"]*)['"]/i;
-            const equalityMatch = whereClause.match(equalityRegex);
-            
-            if (!equalityMatch) {
-              throw new Error('Unsupported WHERE clause format. Use column = \'value\' or column IN (\'value1\', \'value2\', ...)');
-            }
-            
-            let whereColumn = equalityMatch[1]?.trim();
-            const whereValue = equalityMatch[2];
-            
-            // Validate where column name
-            if (!whereColumn || !headers.includes(whereColumn)) {
-              const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
-              if (similarWhereColumn) {
-                errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
-                whereColumn = similarWhereColumn;
-              } else {
-                throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
-              }
-            }
-            
-            // Apply the update with equality condition
-            data.forEach((row, index) => {
-              if (String(row[whereColumn!]).toLowerCase() === String(whereValue).toLowerCase()) { // Added non-null assertion
-                if (data[index]) {
-                  (data[index] as CsvRow)[columnToUpdate!] = newValue; // Added non-null assertion
-                }
-                rowsAffected++;
-              }
-            });
-          }
-        } 
-        // Without WHERE clause, update all rows
-        else {
-          data.forEach((row, index) => {
-            if (data[index]) {
-              (data[index] as CsvRow)[columnToUpdate!] = newValue; // Added non-null assertion
-            }
-            rowsAffected++;
-          });
-        }
-      } catch (err: any) { // Typed err
-        errors.push(`SQL UPDATE error: ${err.message}`);
-      }
+    // Determine operation type
+    if (sqlQuery.toUpperCase().startsWith('SELECT')) {
+      operation = 'SELECT';
+      processSelectOperation(sqlQuery, headers, data, columnsAffected, errors);
+      rowsAffected = data.length;
     }
-    // DELETE operation
+    else if (sqlQuery.toUpperCase().startsWith('UPDATE')) {
+      operation = 'UPDATE';
+      rowsAffected = processUpdateOperation(sqlQuery, headers, data, columnsAffected, errors);
+    }
     else if (sqlQuery.toUpperCase().startsWith('DELETE')) {
       operation = 'DELETE';
-      try {
-        // Parse the DELETE statement
-        // Example: DELETE FROM data WHERE column = 'condition'
-        const deleteRegex = /DELETE\s+(?:FROM\s+)?(?:data|table|\w+)(?:\s+WHERE\s+(.+))?/i;
-        const match = sqlQuery.match(deleteRegex);
-        
-        if (!match) {
-          throw new Error('Invalid DELETE syntax. Expected: DELETE FROM data WHERE condition');
-        }
-        
-        const whereClause = match[1];
-        
-        // Process the WHERE clause
-        if (whereClause) {
-          // Handle basic equality condition: WHERE column = 'value'
-          const equalityRegex = /([^=\s]+)\s*=\s*['"]([^'"]*)['"]/i;
-          const equalityMatch = whereClause.match(equalityRegex);
-          
-          if (equalityMatch) {
-            let whereColumn = equalityMatch[1]?.trim();
-            const whereValue = equalityMatch[2];
-            
-            // Validate where column name
-            if (!whereColumn || !headers.includes(whereColumn)) {
-              const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
-              if (similarWhereColumn) {
-                errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
-                whereColumn = similarWhereColumn;
-              } else {
-                throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
-              }
-            }
-            
-            columnsAffected.push(whereColumn);
-            
-            // Apply the delete with equality condition
-            const originalLength = data.length;
-            data = data.filter(row => String(row[whereColumn!]).toLowerCase() !== String(whereValue).toLowerCase()); // Added non-null assertion
-            rowsAffected = originalLength - data.length;
-          }
-          // Handle basic comparison: WHERE column > value
-          else {
-            const comparisonRegex = /([^<>=\s]+)\s*([<>=]+)\s*([0-9.]+)/i;
-            const comparisonMatch = whereClause.match(comparisonRegex);
-            
-            if (!comparisonMatch) {
-              throw new Error('Unsupported WHERE clause format. Use column = \'value\' or column > number');
-            }
-            
-            let whereColumn = comparisonMatch[1]?.trim();
-            const operator = comparisonMatch[2];
-            const compareValue = parseFloat(comparisonMatch[3]);
-            
-            if (isNaN(compareValue)) {
-              throw new Error('Comparison value must be a number');
-            }
-            
-            // Validate where column name
-            if (!whereColumn || !headers.includes(whereColumn)) {
-              const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
-              if (similarWhereColumn) {
-                errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
-                whereColumn = similarWhereColumn;
-              } else {
-                throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
-              }
-            }
-            
-            columnsAffected.push(whereColumn);
-            
-            // Apply the delete with comparison condition
-            const originalLength = data.length;
-            data = data.filter(row => {
-              const cellValue = parseFloat(String(row[whereColumn!])); // Added non-null assertion
-              if (isNaN(cellValue)) return true; // Skip non-numeric values
-              
-              switch (operator) {
-                case '>': return cellValue <= compareValue;
-                case '<': return cellValue >= compareValue;
-                case '>=': return cellValue < compareValue;
-                case '<=': return cellValue > compareValue;
-                case '=': return cellValue !== compareValue;
-                default: return true;
-              }
-            });
-            
-            rowsAffected = originalLength - data.length;
-          }
-        } 
-        // Without WHERE clause, we won't delete all data (too dangerous)
-        else {
-          errors.push('DELETE without WHERE clause is not supported. Specify filtering criteria.');
-        }
-      } catch (err: any) { // Typed err
-        errors.push(`SQL DELETE error: ${err.message}`);
-      }
+      rowsAffected = processDeleteOperation(sqlQuery, headers, data, columnsAffected, errors);
     }
-    // SELECT operation - not modifying data, but we can still process it
-    else if (sqlQuery.toUpperCase().startsWith('SELECT')) {
-      operation = 'SELECT';
-      errors.push('SELECT operation is read-only and does not modify data.');
-    }
-    // Unsupported operation
     else {
-      errors.push(`Unsupported SQL operation. Currently supported: UPDATE, DELETE`);
+      errors.push(`Unsupported SQL operation. Currently supported: SELECT, UPDATE, DELETE`);
     }
 
     // Generate processed CSV data
@@ -350,7 +137,12 @@ export async function processDirectSql(input: CsvSqlProcessInput): Promise<CsvSq
 
     // Generate operation summary
     let summary = '';
-    if (rowsAffected > 0) {
+    if (operation === 'SELECT') {
+      summary = `Retrieved ${data.length} row(s) from the dataset.`;
+      if (columnsAffected.length > 0) {
+        summary += ` Selected column(s): ${columnsAffected.join(', ')}.`;
+      }
+    } else if (rowsAffected > 0) {
       summary = `${operation} operation completed successfully. ${rowsAffected} row(s) ${operation === 'UPDATE' ? 'updated' : 'deleted'}.`;
       if (columnsAffected.length > 0) {
         summary += ` Affected column(s): ${columnsAffected.join(', ')}.`;
@@ -375,4 +167,354 @@ export async function processDirectSql(input: CsvSqlProcessInput): Promise<CsvSq
       errorLog: [error.message || 'Unknown error occurred during processing']
     };
   }
+}
+
+/**
+ * Process SELECT SQL operation
+ */
+function processSelectOperation(
+  sqlQuery: string, 
+  headers: string[], 
+  data: CsvRow[], 
+  columnsAffected: string[],
+  errors: string[]
+): void {
+  try {
+    // Parse the SELECT statement
+    // Example: SELECT column1, column2 FROM data WHERE column3 = 'condition'
+    const selectRegex = /SELECT\s+(.*?)\s+FROM\s+(?:data|table|\w+)(?:\s+WHERE\s+(.+))?/i;
+    const match = sqlQuery.match(selectRegex);
+    
+    if (!match) {
+      throw new Error('Invalid SELECT syntax. Expected: SELECT columns FROM data WHERE condition');
+    }
+    
+    const columnsToSelect = match[1]?.trim();
+    const whereClause = match[2];
+    
+    // Determine which columns to include
+    let selectedColumns: string[] = [];
+    if (columnsToSelect === '*') {
+      selectedColumns = headers; // Include all columns
+    } else {
+      // Parse comma-separated column list
+      selectedColumns = columnsToSelect.split(',')
+        .map(c => c.trim())
+        .filter(Boolean);
+      
+      // Validate column names
+      for (let i = 0; i < selectedColumns.length; i++) {
+        const col = selectedColumns[i];
+        if (!headers.includes(col)) {
+          const similarColumn = headers.find(h => h.toLowerCase() === col.toLowerCase());
+          if (similarColumn) {
+            errors.push(`Column name case mismatch. Did you mean '${similarColumn}'?`);
+            selectedColumns[i] = similarColumn;
+          } else {
+            throw new Error(`Column '${col}' not found in data. Available columns: ${headers.join(', ')}`);
+          }
+        }
+      }
+    }
+    
+    columnsAffected.push(...selectedColumns);
+    
+    // Process the WHERE clause if present
+    let filteredData = data;
+    if (whereClause) {
+      filteredData = processWhereClause(whereClause, headers, data, errors);
+    }
+    
+    // For SELECT, if we have selectedColumns that are different from all headers,
+    // we need to create a new array with only those columns
+    if (selectedColumns.length !== headers.length || !headers.every((h, i) => h === selectedColumns[i])) {
+      data.length = 0; // Clear the array without breaking reference
+      filteredData.forEach(row => {
+        const newRow: CsvRow = {};
+        selectedColumns.forEach(col => {
+          newRow[col] = row[col];
+        });
+        data.push(newRow);
+      });
+    } else {
+      data.length = 0; // Clear the array without breaking reference
+      data.push(...filteredData);
+    }
+  } catch (err: any) {
+    errors.push(`SQL SELECT error: ${err.message}`);
+  }
+}
+
+/**
+ * Process UPDATE SQL operation
+ */
+function processUpdateOperation(
+  sqlQuery: string, 
+  headers: string[], 
+  data: CsvRow[], 
+  columnsAffected: string[],
+  errors: string[]
+): number {
+  let rowsAffected = 0;
+  
+  try {
+    // Parse the UPDATE statement
+    // Example: UPDATE data SET column1 = 'value' WHERE column2 = 'condition'
+    const updateRegex = /UPDATE\s+(?:data|table|\w+)\s+SET\s+([^=\s]+)\s*=\s*['"](.*?)['"](?:\s+WHERE\s+(.+))?/i;
+    const match = sqlQuery.match(updateRegex);
+    
+    if (!match) {
+      throw new Error('Invalid UPDATE syntax. Expected: UPDATE data SET column = \'value\' WHERE condition');
+    }
+    
+    let columnToUpdate = match[1]?.trim();
+    const newValue = match[2];
+    const whereClause = match[3];
+    
+    // Validate column name
+    if (!columnToUpdate || !headers.includes(columnToUpdate)) {
+      const similarColumn = headers.find(h => h.toLowerCase() === columnToUpdate.toLowerCase());
+      if (similarColumn) {
+        errors.push(`Column name case mismatch. Did you mean '${similarColumn}'?`);
+        columnToUpdate = similarColumn;
+      } else {
+        throw new Error(`Column '${columnToUpdate}' not found in data. Available columns: ${headers.join(', ')}`);
+      }
+    }
+    
+    columnsAffected.push(columnToUpdate);
+    
+    // Process the WHERE clause
+    if (whereClause) {
+      const filteredData = processWhereClause(whereClause, headers, data, errors);
+      
+      // Create a set of filtered row indexes for fast lookup
+      const filteredIndexes = new Set<number>();
+      filteredData.forEach(filteredRow => {
+        const index = data.findIndex(row => row === filteredRow);
+        if (index !== -1) {
+          filteredIndexes.add(index);
+        }
+      });
+      
+      // Update only the filtered rows
+      data.forEach((row, index) => {
+        if (filteredIndexes.has(index)) {
+          (data[index] as CsvRow)[columnToUpdate!] = newValue; // Added non-null assertion
+          rowsAffected++;
+        }
+      });
+    } 
+    // Without WHERE clause, update all rows
+    else {
+      data.forEach((row, index) => {
+        if (data[index]) {
+          (data[index] as CsvRow)[columnToUpdate!] = newValue; // Added non-null assertion
+          rowsAffected++;
+        }
+      });
+    }
+  } catch (err: any) { 
+    errors.push(`SQL UPDATE error: ${err.message}`);
+  }
+  
+  return rowsAffected;
+}
+
+/**
+ * Process DELETE SQL operation
+ */
+function processDeleteOperation(
+  sqlQuery: string, 
+  headers: string[], 
+  data: CsvRow[], 
+  columnsAffected: string[],
+  errors: string[]
+): number {
+  let rowsAffected = 0;
+  
+  try {
+    // Parse the DELETE statement
+    // Example: DELETE FROM data WHERE column = 'condition'
+    const deleteRegex = /DELETE\s+(?:FROM\s+)?(?:data|table|\w+)(?:\s+WHERE\s+(.+))?/i;
+    const match = sqlQuery.match(deleteRegex);
+    
+    if (!match) {
+      throw new Error('Invalid DELETE syntax. Expected: DELETE FROM data WHERE condition');
+    }
+    
+    const whereClause = match[1];
+    
+    // Process the WHERE clause
+    if (whereClause) {
+      const originalLength = data.length;
+      const rowsToKeep = processWhereClause(whereClause, headers, data, errors);
+      
+      // For DELETE, we want to keep the rows that DON'T match the WHERE clause
+      const rowsToKeepSet = new Set(rowsToKeep);
+      data = data.filter(row => !rowsToKeepSet.has(row));
+      rowsAffected = originalLength - data.length;
+    } 
+    // Without WHERE clause, we won't delete all data (too dangerous)
+    else {
+      errors.push('DELETE without WHERE clause is not supported. Specify filtering criteria.');
+    }
+  } catch (err: any) { 
+    errors.push(`SQL DELETE error: ${err.message}`);
+  }
+  
+  return rowsAffected;
+}
+
+/**
+ * Process WHERE clause and return filtered data
+ */
+function processWhereClause(
+  whereClause: string, 
+  headers: string[], 
+  data: CsvRow[], 
+  errors: string[]
+): CsvRow[] {
+  // Handle LIKE operator for pattern matching: WHERE column LIKE '%pattern%'
+  const likeRegex = /([^=\s]+)\s+LIKE\s+['"]([^'"]*)['"]/i;
+  const likeMatch = whereClause.match(likeRegex);
+  
+  if (likeMatch) {
+    let whereColumn = likeMatch[1]?.trim();
+    let pattern = likeMatch[2];
+    
+    // Validate where column name
+    if (!whereColumn || !headers.includes(whereColumn)) {
+      const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
+      if (similarWhereColumn) {
+        errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
+        whereColumn = similarWhereColumn;
+      } else {
+        throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
+      }
+    }
+    
+    // Convert SQL LIKE pattern to JavaScript RegExp
+    pattern = pattern
+      .replace(/%/g, '.*')   // % becomes .* (any number of characters)
+      .replace(/_/g, '.')    // _ becomes . (single character)
+      .replace(/\\/g, '\\\\'); // Escape backslashes
+      
+    const patternRegex = new RegExp(`^${pattern}$`, 'i'); // Case-insensitive
+    
+    // Filter data based on LIKE pattern
+    return data.filter(row => {
+      const cellValue = String(row[whereColumn!]);
+      return patternRegex.test(cellValue);
+    });
+  }
+  
+  // Handle IN clause: WHERE column IN ('value1', 'value2', ...)
+  const inRegex = /([^=\s]+)\s+IN\s+\(\s*((?:['"][^'"]*['"](?:\s*,\s*['"][^'"]*['"])*)?)\s*\)/i;
+  const inMatch = whereClause.match(inRegex);
+  
+  if (inMatch) {
+    let whereColumn = inMatch[1]?.trim();
+    const valuesString = inMatch[2];
+    
+    // Validate where column name
+    if (!whereColumn || !headers.includes(whereColumn)) {
+      const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
+      if (similarWhereColumn) {
+        errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
+        whereColumn = similarWhereColumn;
+      } else {
+        throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
+      }
+    }
+    
+    // Parse the values in the IN clause
+    const valueRegex = /['"]([^'"]*)['"]/g;
+    const values: string[] = [];
+    
+    let valueMatch;
+    while ((valueMatch = valueRegex.exec(valuesString)) !== null) {
+      values.push(valueMatch[1]);
+    }
+    
+    if (values.length === 0) {
+      throw new Error('No values found in IN clause.');
+    }
+    
+    // Filter rows that match any of the values
+    return data.filter(row => {
+      const cellValue = String(row[whereColumn!]);
+      return values.some(v => cellValue.toLowerCase() === v.toLowerCase());
+    });
+  }
+  
+  // Handle basic equality condition: WHERE column = 'value'
+  const equalityRegex = /([^=\s]+)\s*=\s*['"]([^'"]*)['"]/i;
+  const equalityMatch = whereClause.match(equalityRegex);
+  
+  if (equalityMatch) {
+    let whereColumn = equalityMatch[1]?.trim();
+    const whereValue = equalityMatch[2];
+    
+    // Validate where column name
+    if (!whereColumn || !headers.includes(whereColumn)) {
+      const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
+      if (similarWhereColumn) {
+        errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
+        whereColumn = similarWhereColumn;
+      } else {
+        throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
+      }
+    }
+    
+    // Filter by equality
+    return data.filter(row => 
+      String(row[whereColumn!]).toLowerCase() === String(whereValue).toLowerCase()
+    );
+  }
+
+  // Handle numeric comparison: WHERE column > value
+  const comparisonRegex = /([^<>=\s]+)\s*([<>=]+|!=|<>)\s*([0-9.]+)/i;
+  const comparisonMatch = whereClause.match(comparisonRegex);
+  
+  if (comparisonMatch) {
+    let whereColumn = comparisonMatch[1]?.trim();
+    const operator = comparisonMatch[2];
+    const compareValue = parseFloat(comparisonMatch[3]);
+    
+    if (isNaN(compareValue)) {
+      throw new Error('Comparison value must be a number');
+    }
+    
+    // Validate where column name
+    if (!whereColumn || !headers.includes(whereColumn)) {
+      const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
+      if (similarWhereColumn) {
+        errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
+        whereColumn = similarWhereColumn;
+      } else {
+        throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
+      }
+    }
+    
+    // Filter based on numeric comparison
+    return data.filter(row => {
+      const cellValue = parseFloat(String(row[whereColumn!]));
+      if (isNaN(cellValue)) return false; // Skip non-numeric values
+      
+      switch (operator) {
+        case '>': return cellValue > compareValue;
+        case '<': return cellValue < compareValue;
+        case '>=': return cellValue >= compareValue;
+        case '<=': return cellValue <= compareValue;
+        case '=': return cellValue === compareValue;
+        case '!=': return cellValue !== compareValue;
+        case '<>': return cellValue !== compareValue;
+        default: return false;
+      }
+    });
+  }
+
+  // If we can't parse the WHERE clause, throw an error
+  throw new Error('Unsupported WHERE clause format. Use column = \'value\', column IN (\'value1\', \'value2\', ...), column LIKE \'pattern\', or column > number');
 }

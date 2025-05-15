@@ -1224,10 +1224,92 @@ export default function CsvProcessing() {
                 rows={5}
                 disabled={isProcessingSql}
                 className="text-sm font-mono mb-2"
-              />
-              <p className="text-xs text-muted-foreground mb-3">
+              />              <p className="text-xs text-muted-foreground mb-3">
                 Use SQL-like queries to directly process the CSV data. Supported operations: SELECT, WHERE, UPDATE, DELETE, CASE, basic functions, and aggregations.
               </p>
+              <Accordion type="single" collapsible className="w-full mb-3">
+                <AccordionItem value="sql-format">
+                  <AccordionTrigger className="text-primary font-medium">
+                    <Info className="h-4 w-4 mr-2" /> SQL Command Format Documentation
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="mt-2 space-y-4">
+                      <div>
+                        <h4 className="font-medium">1. SELECT Operations</h4>
+                        <h5 className="text-xs font-semibold mt-2">Select All Columns</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>SELECT * FROM data</code>
+                        </div>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Select Specific Columns</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>SELECT Column1, Column2 FROM data</code>
+                        </div>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Select with Filter</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>SELECT * FROM data WHERE Column = 'Value'</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">2. UPDATE Operations</h4>
+                        <h5 className="text-xs font-semibold mt-2">Update All Rows</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>UPDATE data SET Column = 'New Value'</code>
+                        </div>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Update with Filter</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>UPDATE data SET Column = 'New Value' WHERE Column2 = 'Condition'</code>
+                        </div>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Update with IN Clause</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>UPDATE data SET Column = 'New Value' WHERE Column2 IN ('Value1', 'Value2')</code>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">3. DELETE Operations</h4>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>DELETE FROM data WHERE Column = 'Value'</code><br/>
+                          <code>DELETE FROM data WHERE Column &gt; 100</code>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Note: DELETE without WHERE clause is not supported for safety.</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">4. WHERE Clause Conditions</h4>
+                        <h5 className="text-xs font-semibold mt-2">Equality</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>WHERE Column = 'Value'</code>
+                        </div>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Numeric Comparisons</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>WHERE Column &gt; 100</code><br/>
+                          <code>WHERE Column &lt;= 50</code><br/>
+                          <code>WHERE Column != 0</code>
+                        </div>
+                        
+                        <h5 className="text-xs font-semibold mt-2">Pattern Matching</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>WHERE Column LIKE '%pattern%'</code><br/>
+                          <code>WHERE Column LIKE 'start%'</code><br/>
+                          <code>WHERE Column LIKE '%end'</code>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Note: % is a wildcard for any number of characters, _ is for a single character.</p>
+                        
+                        <h5 className="text-xs font-semibold mt-2">IN Clause</h5>
+                        <div className="bg-muted p-2 rounded my-1 text-xs">
+                          <code>WHERE Column IN ('Value1', 'Value2', 'Value3')</code>
+                        </div>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
               <Button
                 onClick={handleProcessWithSql}
                 disabled={isProcessingSql || !sqlQuery.trim() || !currentCsvData}
