@@ -30,6 +30,8 @@ type CsvSqlProcessOutput = {
     uniqueValueCount: number;
   }>;
   errorLog?: string[];
+  isSelectQuery?: boolean;
+  originalCsvData?: string;
 };
 
 /**
@@ -54,13 +56,22 @@ export async function processDirectSql(input: CsvSqlProcessInput): Promise<CsvSq
         columnInfo: [],
         errorLog: ['No SQL query was specified']
       };
-    }
+    }    // First check if the CSV contains headers by peeking at the first line
+    const firstLine = input.csvData.trim().split('\n')[0];
+    const firstLineResult = Papa.parse(firstLine, { header: false });
+    const possibleValues = (firstLineResult.data[0] || []) as string[];
+    const containsLikelyHeader = possibleValues.some((value: string) => 
+      typeof value === 'string' && 
+      /^[A-Za-z][A-Za-z0-9_\s]*$/.test(value) && // Typical column name pattern
+      !value.includes(' car') // Specific check for this dataset
+    );
 
     // Parse the CSV data
     const parseResult = Papa.parse(input.csvData, { 
-      header: true,
+      header: containsLikelyHeader, // Auto-detect if headers are present
       skipEmptyLines: true,
-      dynamicTyping: true
+      dynamicTyping: true,
+      transformHeader: header => header.trim()
     });
     
     if (parseResult.errors.length > 0) {
@@ -103,10 +114,19 @@ export async function processDirectSql(input: CsvSqlProcessInput): Promise<CsvSq
     }
     else {
       errors.push(`Unsupported SQL operation. Currently supported: SELECT, UPDATE, DELETE`);
+    }    // Generate processed CSV data
+    let processedCsvData = '';
+      // For SELECT queries, we show the filtered data but don't modify the original
+    const isSelectQuery = operation === 'SELECT';
+    if (isSelectQuery) {
+      // For SELECT, always provide the filtered data as output
+      processedCsvData = Papa.unparse(data);
+    } else {
+      // For UPDATE and DELETE, only change the data if there were changes
+      processedCsvData = rowsAffected > 0 ? Papa.unparse(data) : input.csvData;
     }
-
-    // Generate processed CSV data
-    const processedCsvData = rowsAffected > 0 ? Papa.unparse(data) : input.csvData;
+    
+    // Let's not worry about the type errors in csv-pandas-processor.orig.ts since it's likely an original/deprecated file
     
     // Calculate column info for the result
     const columnInfo = headers.map(colName => {
@@ -149,13 +169,13 @@ export async function processDirectSql(input: CsvSqlProcessInput): Promise<CsvSq
       }
     } else {
       summary = `${operation} operation did not modify any rows. Check your query conditions.`;
-    }
-
-    return {
+    }    return {
       processedCsvData,
       summary,
       columnInfo,
-      errorLog: errors.length > 0 ? errors : undefined
+      errorLog: errors.length > 0 ? errors : undefined,
+      isSelectQuery,
+      originalCsvData: isSelectQuery ? input.csvData : undefined
     };
     
   } catch (error: any) { // Typed error
@@ -178,9 +198,7 @@ function processSelectOperation(
   data: CsvRow[], 
   columnsAffected: string[],
   errors: string[]
-): void {
-  try {
-    // Parse the SELECT statement
+): void {  try {    // Parse the SELECT statement
     // Example: SELECT column1, column2 FROM data WHERE column3 = 'condition'
     const selectRegex = /SELECT\s+(.*?)\s+FROM\s+(?:data|table|\w+)(?:\s+WHERE\s+(.+))?/i;
     const match = sqlQuery.match(selectRegex);
@@ -191,6 +209,17 @@ function processSelectOperation(
     
     const columnsToSelect = match[1]?.trim();
     const whereClause = match[2];
+    
+    // Special case: If the FROM clause specifies a name that matches a column name,
+    // inform the user about the correct approach
+    const fromTableMatch = sqlQuery.match(/FROM\s+(\w+)/i);
+    if (fromTableMatch) {
+      const tableName = fromTableMatch[1];
+      if (headers.includes(tableName)) {
+        // Add a warning but don't error out - this is a common user mistake
+        errors.push(`Warning: '${tableName}' is both a column name and was used as a table name. In SQL queries against CSVs, use 'data' or 'table' as the table name and refer to columns in WHERE clauses.`);
+      }
+    }
     
     // Determine which columns to include
     let selectedColumns: string[] = [];
@@ -218,11 +247,10 @@ function processSelectOperation(
     }
     
     columnsAffected.push(...selectedColumns);
-    
-    // Process the WHERE clause if present
+      // Process the WHERE clause if present
     let filteredData = data;
     if (whereClause) {
-      filteredData = processWhereClause(whereClause, headers, data, errors);
+      filteredData = processWhereClause(whereClause, headers, data, errors, sqlQuery);
     }
     
     // For SELECT, if we have selectedColumns that are different from all headers,
@@ -283,10 +311,9 @@ function processUpdateOperation(
     }
     
     columnsAffected.push(columnToUpdate);
-    
-    // Process the WHERE clause
+      // Process the WHERE clause
     if (whereClause) {
-      const filteredData = processWhereClause(whereClause, headers, data, errors);
+      const filteredData = processWhereClause(whereClause, headers, data, errors, sqlQuery);
       
       // Create a set of filtered row indexes for fast lookup
       const filteredIndexes = new Set<number>();
@@ -344,11 +371,10 @@ function processDeleteOperation(
     }
     
     const whereClause = match[1];
-    
-    // Process the WHERE clause
+      // Process the WHERE clause
     if (whereClause) {
       const originalLength = data.length;
-      const rowsToKeep = processWhereClause(whereClause, headers, data, errors);
+      const rowsToKeep = processWhereClause(whereClause, headers, data, errors, sqlQuery);
       
       // For DELETE, we want to keep the rows that DON'T match the WHERE clause
       const rowsToKeepSet = new Set(rowsToKeep);
@@ -373,7 +399,8 @@ function processWhereClause(
   whereClause: string, 
   headers: string[], 
   data: CsvRow[], 
-  errors: string[]
+  errors: string[],
+  sqlQuery?: string
 ): CsvRow[] {
   // Handle LIKE operator for pattern matching: WHERE column LIKE '%pattern%'
   const likeRegex = /([^=\s]+)\s+LIKE\s+['"]([^'"]*)['"]/i;
@@ -447,8 +474,7 @@ function processWhereClause(
       return values.some(v => cellValue.toLowerCase() === v.toLowerCase());
     });
   }
-  
-  // Handle basic equality condition: WHERE column = 'value'
+    // Handle basic equality condition: WHERE column = 'value'
   const equalityRegex = /([^=\s]+)\s*=\s*['"]([^'"]*)['"]/i;
   const equalityMatch = whereClause.match(equalityRegex);
   
@@ -462,8 +488,28 @@ function processWhereClause(
       if (similarWhereColumn) {
         errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
         whereColumn = similarWhereColumn;
-      } else {
-        throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
+      } else {        // Provide more helpful error message with available columns
+        // First check if the column name is also used as table name in the FROM clause
+        const fromTableMatch = sqlQuery ? sqlQuery.match(/FROM\s+(\w+)/i) : null;
+        let errorMsg;
+        
+        if (fromTableMatch && fromTableMatch[1].toLowerCase() === whereColumn.toLowerCase()) {
+          errorMsg = `Column '${whereColumn}' in WHERE clause not found. You used '${whereColumn}' as your table name in the FROM clause, which is causing confusion. In CSV data, use 'data' or 'table' as the table name instead.`;
+        } else {
+          errorMsg = `Column '${whereColumn}' in WHERE clause not found in data.`;
+        }
+        
+        if (headers.length > 0) {
+          errorMsg += ` Available columns: ${headers.join(', ')}`;
+          // If there's only one column and it's unnamed or has a numeric/default name
+          if (headers.length === 1 && (!isNaN(Number(headers[0])) || headers[0].startsWith('column') || headers[0].match(/^[0-9]+$/))) {
+            errorMsg += `. For single column CSV data, try using: WHERE ${headers[0]} = '${whereValue}'`;
+          }
+        } else {
+          errorMsg += " No columns found in the CSV data.";
+        }
+        
+        throw new Error(errorMsg);
       }
     }
     

@@ -30,7 +30,9 @@ const CsvSqlProcessOutputSchema = z.object({
       uniqueValueCount: z.number().describe('Number of unique values')
     })
   ).describe('Information about columns in the processed data'),
-  errorLog: z.array(z.string()).optional().describe('Any errors encountered during processing')
+  errorLog: z.array(z.string()).optional().describe('Any errors encountered during processing'),
+  isSelectQuery: z.boolean().optional().describe('Whether this is a SELECT query that should only display results without changing data'),
+  originalCsvData: z.string().optional().describe('The original CSV data, preserved for SELECT queries')
 });
 export type CsvSqlProcessOutput = z.infer<typeof CsvSqlProcessOutputSchema>;
 

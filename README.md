@@ -231,6 +231,13 @@ DataMaestro offers a comprehensive SQL processing mode for more direct and struc
 - Select specific columns: `SELECT Column1, Column2 FROM data`
 - Select with filtering: `SELECT * FROM data WHERE Column = 'Value'`
 
+SELECT queries display filtered results without modifying the original data. The UI provides:
+
+- A preview of filtered data (first 5 rows)
+- Options to apply the filtered results to the current dataset
+- A download button to save the filtered results as a new CSV file
+- Information about how many rows were returned by the query
+
 ### UPDATE Operations
 
 - Update all rows: `UPDATE data SET Column = 'New Value'`

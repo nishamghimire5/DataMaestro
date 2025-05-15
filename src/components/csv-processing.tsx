@@ -27,7 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, AlertTriangle, Download, FileText, CheckCircle, BarChartHorizontalBig, Table, Sparkles, ListChecks, UserCog, Bot, RotateCcw, Settings2, Lightbulb, Info, Database, MessageSquare, Wand2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Download, FileText, CheckCircle, BarChartHorizontalBig, Table, Sparkles, ListChecks, UserCog, Bot, RotateCcw, Settings2, Lightbulb, Info, Database, MessageSquare, Wand2, Search, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -525,10 +525,38 @@ export default function CsvProcessing() {
 
     setIsProcessingSql(true);
     setSqlError(null);
-    setSqlResult(null);
-
-    try {
-      console.log(`[SQL Processing] Processing CSV data with SQL query: ${sqlQuery}`);
+    setSqlResult(null);    try {
+      console.log(`[SQL Processing] Processing CSV data with SQL query: ${sqlQuery}`);      // Parse the CSV headers to check for common SQL query mistakes
+      const firstLine = currentCsvData.trim().split('\n')[0];
+      const firstLineResult = Papa.parse(firstLine, { header: false });
+      const possibleHeaders = (firstLineResult.data[0] || []) as string[];
+      
+      // Look for possible table/column name confusion in the FROM clause
+      const fromTableMatch = sqlQuery.match(/FROM\s+(\w+)/i);
+      if (fromTableMatch) {
+        const tableName = fromTableMatch[1];
+        
+        // Check if the table name is also a column name, which can cause confusion
+        if (possibleHeaders.includes(tableName) || possibleHeaders.some(h => h.toLowerCase() === tableName.toLowerCase())) {
+          console.log(`[SQL Warning] Table name '${tableName}' is also a column name in the CSV`);
+          toast({
+            title: "Column/Table Name Conflict",
+            description: `'${tableName}' appears to be both a column name and is used as a table name. In SQL queries against CSVs, use 'FROM data' and refer to columns in WHERE clauses.`,
+            variant: "warning",
+            duration: 10000
+          });
+          
+          // If they're also using the same name in a WHERE clause, show a more specific hint
+          if (sqlQuery.toLowerCase().includes(`where ${tableName.toLowerCase()} =`)) {
+            toast({
+              title: "SQL Query Fix Suggestion",
+              description: `Try using 'SELECT * FROM data WHERE ${tableName} =' instead of 'SELECT * FROM ${tableName} WHERE ${tableName} ='.`,
+              variant: "warning",
+              duration: 12000
+            });
+          }
+        }
+      }
 
       // First try the direct SQL processor which doesn't rely on AI
       const result = await processDirectSql({
@@ -537,15 +565,46 @@ export default function CsvProcessing() {
         originalFilename: originalFileName || undefined
       });
 
-      console.log('[SQL Processing] Result:', result);
-
-      // Set the result
+      console.log('[SQL Processing] Result:', result);      // Set the result
       setSqlResult(result);
 
-      // Check if any changes were made by comparing original and processed data
+      // Check for warnings in the error log and show them
+      const warnings = result.errorLog?.filter(err => err.startsWith('Warning:')) || [];
+      if (warnings.length > 0) {
+        // Find any warnings about table/column name conflicts
+        const tableColumnWarnings = warnings.filter(warning => 
+          warning.includes('both a column name and was used as a table name')
+        );
+        
+        if (tableColumnWarnings.length > 0) {
+          // Show most important warning as toast
+          toast({
+            title: "SQL Table/Column Name Ambiguity",
+            description: tableColumnWarnings[0].replace('Warning:', '').trim(),
+            variant: "warning",
+            duration: 10000
+          });
+          
+          console.log("[SQL Processing] Column/table name ambiguity detected:", tableColumnWarnings);
+        }
+      }
+
+      // For SELECT queries, we don't want to permanently modify the current CSV data
+      // Instead, we'll just display the results
+      if (result.isSelectQuery) {
+        toast({
+          title: "Query Results Ready",
+          description: result.summary,
+          variant: "default",
+          action: <CheckCircle className="h-5 w-5 text-green-500" />,
+        });
+        setIsProcessingSql(false);
+        return;
+      }
+
+      // For non-SELECT queries, check if any changes were made by comparing original and processed data
       const hasChanges = result.processedCsvData !== currentCsvData;
-      
-      // If direct processor couldn't handle it, or had errors, fall back to AI-based processor
+        // If direct processor couldn't handle it, or had errors, fall back to AI-based processor
       if (!hasChanges && (result.errorLog?.length || 0) > 0) {
         console.log('Direct SQL processor had errors, trying AI processor as fallback');
         try {
@@ -555,17 +614,40 @@ export default function CsvProcessing() {
             originalFilename: originalFileName || undefined
           });
           
+          // Add the SELECT query flag to the AI output based on the query
+          const isAiSelectQuery = sqlQuery.trim().toUpperCase().startsWith('SELECT');
+          const aiOutputWithFlag = {
+            ...aiOutput,
+            isSelectQuery: isAiSelectQuery,
+            originalCsvData: isAiSelectQuery ? currentCsvData : undefined
+          };
+          
           // If AI was able to process it successfully, use that result instead
-          const aiHasChanges = aiOutput.processedCsvData !== currentCsvData;
+          const aiHasChanges = aiOutputWithFlag.processedCsvData !== currentCsvData;
+          
+          // For SELECT queries from AI processor, handle the same way as direct processor
+          if (isAiSelectQuery) {
+            setSqlResult(aiOutputWithFlag);
+            toast({
+              title: "Query Results Ready",
+              description: aiOutputWithFlag.summary,
+              variant: "default",
+              action: <CheckCircle className="h-5 w-5 text-green-500" />,
+            });
+            setIsProcessingSql(false);
+            return;
+          }
+          
+          // For non-SELECT queries, update the data if there were changes
           if (aiHasChanges) {
             console.log('AI SQL processor made changes, using its result');
-            setSqlResult(aiOutput);
-            setCurrentCsvData(aiOutput.processedCsvData);
+            setSqlResult(aiOutputWithFlag);
+            setCurrentCsvData(aiOutputWithFlag.processedCsvData);
             setIsIterativeProcessing(true);
             
             toast({
               title: "SQL Processing Complete",
-              description: aiOutput.summary,
+              description: aiOutputWithFlag.summary,
               variant: "default",
               action: <CheckCircle className="h-5 w-5 text-green-500" />,
             });
@@ -588,13 +670,38 @@ export default function CsvProcessing() {
           description: result.summary,
           variant: "default",
           action: <CheckCircle className="h-5 w-5 text-green-500" />,
-        });
-      } else if ((result.errorLog?.length || 0) > 0) {
-        toast({
-          title: "SQL Processing Completed with Errors",
-          description: `${result.errorLog?.[0]} ${(result.errorLog?.length || 0) > 1 ? ` and ${(result.errorLog?.length || 0) - 1} more errors` : ''}`,
-          variant: "destructive",
-        });
+        });      } else if ((result.errorLog?.length || 0) > 0) {
+        // Separate warnings and errors for better user feedback
+        const warnings = result.errorLog?.filter(log => log.startsWith('Warning:')) || [];
+        const errors = result.errorLog?.filter(log => !log.startsWith('Warning:')) || [];
+        
+        if (errors.length > 0) {
+          // If there's a column not found error that might be related to table/column confusion
+          const columnNotFoundError = errors.find(err => err.includes('Column') && err.includes('not found'));
+          
+          if (columnNotFoundError && fromTableMatch) {
+            // This might be a case where they're confused about table vs. column names
+            toast({
+              title: "SQL Column Not Found",
+              description: `${columnNotFoundError}. If '${fromTableMatch[1]}' is your data, try using 'FROM data' instead.`,
+              variant: "destructive",
+            });
+          } else {
+            // General error case
+            toast({
+              title: "SQL Processing Completed with Errors",
+              description: `${errors[0]} ${errors.length > 1 ? ` and ${errors.length - 1} more errors` : ''}`,
+              variant: "destructive",
+            });
+          }
+        } else if (warnings.length > 0) {
+          // Only warnings, no errors
+          toast({
+            title: "SQL Processing Completed with Warnings",
+            description: warnings[0].replace('Warning:', ''),
+            variant: "warning",
+          });
+        }
       } else {
         toast({
           title: "No Changes Applied",
@@ -1245,11 +1352,15 @@ export default function CsvProcessing() {
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>SELECT Column1, Column2 FROM data</code>
                         </div>
-                        
-                        <h5 className="text-xs font-semibold mt-2">Select with Filter</h5>
+                          <h5 className="text-xs font-semibold mt-2">Select with Filter</h5>
                         <div className="bg-muted p-2 rounded my-1 text-xs">
                           <code>SELECT * FROM data WHERE Column = 'Value'</code>
                         </div>
+                        
+                        <p className="text-xs text-muted-foreground mt-2">
+                          <Info className="h-3 w-3 inline mr-1" /> SELECT queries show filtered results without modifying your data. 
+                          You'll see an option to apply the results if desired.
+                        </p>
                       </div>
                       
                       <div>
@@ -1359,18 +1470,192 @@ export default function CsvProcessing() {
                           ))}
                         </tbody>
                       </table>
-                    </div>
-                    {sqlResult.errorLog && sqlResult.errorLog.length > 0 && (
-                      <Alert variant="destructive" className="mt-4">
-                        <AlertTitle>Processing Errors</AlertTitle>
-                        <div className="max-h-40 overflow-y-auto">
-                          <ul className="list-disc list-inside text-sm">
-                            {sqlResult.errorLog.map((err, idx) => (
-                              <li key={idx}>{err}</li>
-                            ))}
-                          </ul>
+                    </div>                    {sqlResult.errorLog && sqlResult.errorLog.length > 0 && (
+                      <>
+                        {/* Display warnings separately from errors */}
+                        {sqlResult.errorLog.some(err => err.startsWith('Warning:')) && (
+                          <Alert variant="warning" className="mt-4 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700">
+                            <AlertTitle className="text-amber-700 dark:text-amber-400">SQL Processing Warnings</AlertTitle>
+                            <div className="max-h-40 overflow-y-auto">
+                              <ul className="list-disc list-inside text-sm">
+                                {sqlResult.errorLog
+                                  .filter(err => err.startsWith('Warning:'))
+                                  .map((warning, idx) => (
+                                    <li key={idx} className="mb-1 text-amber-600 dark:text-amber-400">
+                                      {warning.replace('Warning:', '')}
+                                    </li>
+                                  ))
+                                }
+                              </ul>
+                            </div>
+                          </Alert>
+                        )}
+                        
+                        {/* Display actual errors */}
+                        {sqlResult.errorLog.some(err => !err.startsWith('Warning:')) && (
+                          <Alert variant="destructive" className="mt-4">
+                            <AlertTitle>Processing Errors</AlertTitle>
+                            <div className="max-h-40 overflow-y-auto">
+                              <ul className="list-disc list-inside text-sm">
+                                {sqlResult.errorLog
+                                  .filter(err => !err.startsWith('Warning:'))
+                                  .map((err, idx) => (
+                                    <li key={idx} className="mb-1">
+                                      {err.includes('Available columns:') ? (
+                                        <>
+                                          {err.split('Available columns:')[0]}
+                                          <span className="font-semibold">Available columns: </span>
+                                          <code className="bg-muted/80 px-1 rounded text-xs">
+                                            {err.split('Available columns:')[1].split('.')[0].trim()}
+                                          </code>
+                                          {err.includes('For single column CSV') && (
+                                            <div className="mt-1 ml-6 text-xs bg-background/80 p-1 rounded border border-muted">
+                                              <span className="font-semibold">Hint:</span> {err.split('For single column CSV')[1]}
+                                            </div>
+                                          )}
+                                        </>
+                                      ) : (
+                                        err
+                                      )}
+                                    </li>
+                                  ))
+                                }
+                              </ul>
+                            </div>
+                          </Alert>
+                        )}
+                      </>
+                    )}{sqlResult.isSelectQuery && (
+                      <div className="mt-4 border-t pt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium flex items-center gap-2">
+                            <Search className="h-4 w-4 text-primary" />
+                            SELECT Query Results
+                          </h4>
+                          <p className="text-xs text-muted-foreground">
+                            Showing filtered data without changing the original CSV
+                          </p>
                         </div>
-                      </Alert>
+                        
+                        {/* Data preview section */}
+                        <div className="my-3 border rounded-md overflow-hidden">
+                          <div className="bg-muted p-2 font-medium text-sm flex justify-between items-center">
+                            <span>Data Preview</span>                            <span className="text-xs text-muted-foreground">
+                              {(() => {
+                                try {
+                                  const parsed = Papa.parse(sqlResult.processedCsvData, { header: true });
+                                  const totalRows = parsed.data.length;
+                                  const displayRows = Math.min(5, totalRows);
+                                  
+                                  if (totalRows === 0) {
+                                    return "No rows matched your query";
+                                  } else if (totalRows <= 5) {
+                                    return `Showing all ${totalRows} filtered rows`;
+                                  } else {
+                                    return `Showing ${displayRows} of ${totalRows} filtered rows`;
+                                  }
+                                } catch (e) {
+                                  return 'Could not parse data';
+                                }
+                              })()}
+                            </span>
+                          </div>
+                          <div className="p-2 bg-card overflow-auto max-h-40">
+                            <div className="text-xs font-mono">
+                              {(() => {
+                                try {
+                                  const parsed = Papa.parse(sqlResult.processedCsvData, { header: true });
+                                  const rows = parsed.data.slice(0, 5);
+                                  if (rows.length === 0) {
+                                    return <p className="text-muted-foreground p-2 text-center">No rows matched your query</p>;
+                                  }
+                                  
+                                  const headers = parsed.meta.fields || [];
+                                  
+                                  return (
+                                    <table className="min-w-full">
+                                      <thead>
+                                        <tr className="border-b">
+                                          {headers.map((header, i) => (
+                                            <th key={i} className="p-1 text-left bg-muted">{header}</th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {rows.map((row, i) => (                                          <tr key={i} className={i % 2 ? "bg-muted/30" : ""}>
+                                            {headers.map((header, j) => (
+                                              <td key={j} className="p-1 truncate max-w-[200px]">{String((row as Record<string, any>)[header] || '')}</td>
+                                            ))}
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  );
+                                } catch (e) {
+                                  return <p className="text-muted-foreground p-2 text-center">Could not parse data preview</p>;
+                                }
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                          <div className="space-y-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Button 
+                              onClick={() => {
+                                if (sqlResult.processedCsvData) {
+                                  setCurrentCsvData(sqlResult.processedCsvData);
+                                  setIsIterativeProcessing(true);
+                                  toast({
+                                    title: "Changes Applied",
+                                    description: "Query results have been applied to the current data.",
+                                    variant: "default",
+                                    action: <CheckCircle className="h-5 w-5 text-green-500" />,
+                                  });
+                                }
+                              }}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Save className="mr-2 h-4 w-4" />
+                              Apply These Results to Current Data
+                            </Button>
+                            
+                            <Button 
+                              onClick={() => {
+                                if (sqlResult.processedCsvData) {
+                                  // Create a download link for the filtered data
+                                  const blob = new Blob([sqlResult.processedCsvData], { type: 'text/csv;charset=utf-8' });
+                                  const url = URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.download = originalFileName ? 
+                                    `filtered_${originalFileName}` : 
+                                    `filtered_data_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  URL.revokeObjectURL(url);
+                                  
+                                  toast({
+                                    title: "Download Started",
+                                    description: "Filtered data is being downloaded.",
+                                    variant: "default",
+                                  });
+                                }
+                              }}
+                              variant="secondary"
+                              size="sm"
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              Download Filtered Results
+                            </Button>
+                          </div>
+                          
+                          <p className="text-xs text-muted-foreground">
+                            You can apply these results to update your current data, download the filtered results, or continue working with the original dataset.
+                          </p>
+                        </div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
