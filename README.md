@@ -221,6 +221,39 @@ DataMaestro supports an extensive range of data processing operations through na
 - Melt operations (wide to long format)
 - Transpose operations
 
+## Supported SQL Processing Operations
+
+DataMaestro offers a comprehensive SQL processing mode for more direct and structured data manipulation:
+
+### SELECT Operations
+
+- Select all columns: `SELECT * FROM data`
+- Select specific columns: `SELECT Column1, Column2 FROM data`
+- Select with filtering: `SELECT * FROM data WHERE Column = 'Value'`
+
+### UPDATE Operations
+
+- Update all rows: `UPDATE data SET Column = 'New Value'`
+- Update with conditions: `UPDATE data SET Column = 'New Value' WHERE Column2 = 'Condition'`
+- Update with IN clause: `UPDATE data SET Column = 'New Value' WHERE Column2 IN ('Value1', 'Value2')`
+
+### DELETE Operations
+
+- Delete rows with conditions: `DELETE FROM data WHERE Column = 'Value'`
+- Delete with numeric comparisons: `DELETE FROM data WHERE Column > 100`
+- Note: DELETE without WHERE clause is not supported for safety
+
+### WHERE Clause Conditions
+
+- Equality operations: `WHERE Column = 'Value'`
+- Numeric comparisons: `WHERE Column > 100`, `WHERE Column <= 50`, `WHERE Column != 0`
+- Pattern matching with LIKE: `WHERE Column LIKE '%pattern%'`, `WHERE Column LIKE 'start%'`, `WHERE Column LIKE '%end'`
+  - `%` is a wildcard for any number of characters
+  - `_` is a wildcard for a single character
+- IN clause for multiple values: `WHERE Column IN ('Value1', 'Value2', 'Value3')`
+
+The SQL processor implementation handles these operations efficiently without relying on external database engines, processing the data directly in memory and providing detailed summaries of the changes made.
+
 ## Future Enhancements (Example Ideas)
 
 - Advanced anomaly detection.
