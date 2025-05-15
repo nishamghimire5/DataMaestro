@@ -84,10 +84,10 @@ Handle errors gracefully by:
 - Continuing processing when possible
 
 Your output should be:
-1. The processed CSV data after executing the SQL operations
-2. A summary of what was done
-3. Information about the columns in the final data
-4. A log of any errors encountered during processing (if any)`,
+1. The processed CSV data after executing the SQL operations. For UPDATE, DELETE, or other data-modifying queries, this must be the complete dataset with all changes applied. For SELECT queries, this is the subset of data matching the query.
+2. A summary of what was done.
+3. Information about the columns in the final data.
+4. A log of any errors encountered during processing (if any). If an operation cannot be fully completed, please explain why in the summary and errorLog.`,
 });
 
 // Define the flow for SQL-like CSV processing
@@ -113,7 +113,7 @@ const csvSqlProcessFlow = ai.defineFlow(
       const parseResult = Papa.parse(input.csvData, { 
         header: true,
         skipEmptyLines: true,
-        dynamicTyping: false
+        dynamicTyping: false // Keep as strings initially to avoid parsing issues
       });
       
       if (parseResult.errors.length > 0) {
@@ -128,8 +128,140 @@ const csvSqlProcessFlow = ai.defineFlow(
           errorLog: ['Invalid CSV format or empty data']
         };
       }
+
+      // Extract available column names from the data for validation
+      const availableColumns = parseResult.meta.fields || [];
+      console.log("Available columns:", availableColumns);
       
-      // Process the data using the AI model
+      // *** ONLY HANDLE UPDATE STATEMENTS DIRECTLY ***
+      // For all aggregation or complex SELECT queries, we'll use the AI model
+      {
+        // We'll use string operations for reliability to detect UPDATE statements
+        const normalizedQuery = input.sqlQuery.toLowerCase().trim();
+        
+        if (normalizedQuery.startsWith('update')) {
+          console.log("Processing UPDATE statement");
+          
+          try {
+            // Basic UPDATE pattern: UPDATE table SET col = value [WHERE condition]
+            const parts = normalizedQuery.match(/update\s+(\S+)\s+set\s+([^=\s]+)\s*=\s*(.+?)(?:\s+where\s+(.+?))?(?:\s*;|\s*$)/i);
+            
+            if (parts) {
+              const tableName = parts[1];
+              const colToUpdate = parts[2];
+              const valueExpr = parts[3];
+              const whereClause = parts[4] || '';
+              
+              console.log("UPDATE parts:", { tableName, colToUpdate, valueExpr, whereClause });
+              
+              // Verify column exists
+              if (!availableColumns.includes(colToUpdate)) {
+                return {
+                  processedCsvData: input.csvData,
+                  summary: `Error: Column '${colToUpdate}' not found in the CSV data.`,
+                  columnInfo: [],
+                  errorLog: [`Column '${colToUpdate}' not found in CSV data.`]
+                };
+              }
+              
+              const rows = parseResult.data as Record<string, any>[];
+              let rowsToUpdate = rows;
+              
+              // Apply WHERE clause if present
+              if (whereClause) {
+                // Simple WHERE handling for basic conditions like col = value
+                const whereMatch = /([^=<>!\s]+)\s*([=<>!]+)\s*['"]?([^'"]+)['"]?/.exec(whereClause);
+                if (whereMatch) {
+                  const whereCol = whereMatch[1];
+                  const operator = whereMatch[2];
+                  const whereVal = whereMatch[3];
+                  
+                  console.log("WHERE condition:", { whereCol, operator, whereVal });
+                  
+                  if (operator === '=') {
+                    rowsToUpdate = rows.filter(r => String(r[whereCol]) === whereVal);
+                  } else if (operator === '!=') {
+                    rowsToUpdate = rows.filter(r => String(r[whereCol]) !== whereVal);
+                  } else if (operator === '>') {
+                    rowsToUpdate = rows.filter(r => Number(r[whereCol]) > Number(whereVal));
+                  } else if (operator === '<') {
+                    rowsToUpdate = rows.filter(r => Number(r[whereCol]) < Number(whereVal));
+                  } else if (operator === '>=') {
+                    rowsToUpdate = rows.filter(r => Number(r[whereCol]) >= Number(whereVal));
+                  } else if (operator === '<=') {
+                    rowsToUpdate = rows.filter(r => Number(r[whereCol]) <= Number(whereVal));
+                  }
+                }
+              }
+              
+              // Process the value expression
+              const isQuotedString = /^['"](.+)['"]$/.test(valueExpr);
+              const isNumber = /^-?\d+(\.\d+)?$/.test(valueExpr);
+              
+              let updatedCount = 0;
+              
+              // Update the matching rows
+              for (const row of rowsToUpdate) {
+                const oldValue = row[colToUpdate];
+                let newValue;
+                
+                if (isQuotedString) {
+                  // Extract the string value without quotes
+                  newValue = valueExpr.replace(/^['"]|['"]$/g, '');
+                } else if (isNumber) {
+                  // Convert to number
+                  newValue = Number(valueExpr);
+                } else {
+                  // Try to evaluate as an expression (simple case)
+                  newValue = valueExpr; // Default to literal value
+                }
+                
+                row[colToUpdate] = newValue;
+                
+                if (oldValue !== newValue) {
+                  updatedCount++;
+                }
+              }
+              
+              console.log(`Updated ${updatedCount} rows`);
+              
+              const processedCsvData = Papa.unparse(rows);
+              
+              // Build updated columnInfo
+              const columnInfo = availableColumns.map(name => {
+                const colVals = rows.map(r => r[name]);
+                const nonNullCount = colVals.filter(v => v !== undefined && v !== null && v !== '').length;
+                const uniqueValueCount = new Set(colVals).size;
+                const sample = colVals.find(v => v !== undefined && v !== null);
+                const dataType = sample != null && !isNaN(Number(sample)) ? 'number' : 'string';
+                return { name, dataType, nonNullCount, uniqueValueCount };
+              });
+              
+              return {
+                processedCsvData,
+                summary: `Updated column '${colToUpdate}' in ${updatedCount} row(s).`,
+                columnInfo,
+                errorLog: [],
+                isSelectQuery: false
+              };
+            } else {
+              console.log("UPDATE statement pattern not recognized");
+            }
+          } catch (error) {
+            console.error("Error in UPDATE processing:", error);
+            return {
+              processedCsvData: input.csvData,
+              summary: `Error during UPDATE processing: ${error instanceof Error ? error.message : String(error)}`,
+              columnInfo: [],
+              errorLog: [`Failed to process UPDATE: ${error instanceof Error ? error.message : String(error)}`]
+            };
+          }
+        }
+      }
+
+      // For all other queries (SELECT, aggregations, etc.), use the AI model
+      console.log("Using AI model to process query:", input.sqlQuery);
+            
       const { output } = await csvSqlProcessPrompt(input);
       
       if (!output) {
