@@ -235,65 +235,63 @@ export default function Home() {
           <h2 className="text-lg font-semibold">LLM-Powered Data Enhancement Platform</h2>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 space-y-8"> {/* Increased spacing */}
-          <Card id="anomaly-detection">
+        <main className="flex-1 overflow-y-auto p-6 space-y-8"> {/* Increased spacing */}          <Card id="anomaly-detection">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ScanSearch className="w-5 h-5 text-primary" />
                 Data Anomaly Detection
               </CardTitle>
+              <p className="text-xs text-muted-foreground">Processed with AI</p>
             </CardHeader>
             <CardContent>
               {/* Pass the callback function */}
               <DataAnomalyDetection onValidation={handleAnomalyValidation} />
             </CardContent>
-          </Card>
-
-          <Card id="standardization">
+          </Card>          <Card id="standardization">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileCheck2 className="w-5 h-5 text-primary" />
                 Data Standardization
               </CardTitle>
+              <p className="text-xs text-muted-foreground">Processed with AI</p>
             </CardHeader>
             <CardContent>
                {/* Pass the callback function */}
               <DataStandardization onValidation={handleStandardizationValidation} />
             </CardContent>
-          </Card>
-
-           <Card id="csv-processing">
+          </Card>           <Card id="csv-processing">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                  <TableProperties className="w-5 h-5 text-primary" />
                 CSV Data Processing
               </CardTitle>
+              <p className="text-xs text-muted-foreground">Hybrid processing (Suggestion mode: AI, SQL mode: Custom parser with AI fallback, Command mode: AI)</p>
             </CardHeader>
             <CardContent>
               <CsvProcessing />
             </CardContent>
            </Card>
 
-            {/* New Card for Data Profiling */}
-           <Card id="profiling">
+            {/* New Card for Data Profiling */}           <Card id="profiling">
              <CardHeader>
                <CardTitle className="flex items-center gap-2">
                   <ClipboardList className="w-5 h-5 text-primary" />
                  Data Profiling
                </CardTitle>
+               <p className="text-xs text-muted-foreground">Processed with AI</p>
              </CardHeader>
              <CardContent>
                <DataProfiling />
              </CardContent>
             </Card>
 
-             {/* New Card for Evaluation Dashboard */}
-            <Card id="evaluation">
+             {/* New Card for Evaluation Dashboard */}            <Card id="evaluation">
              <CardHeader>
                <CardTitle className="flex items-center gap-2">
                   <Target className="w-5 h-5 text-primary" />
                  Evaluation Dashboard
                </CardTitle>
+               <p className="text-xs text-muted-foreground">Analytics dashboard with human feedback tracking</p>
              </CardHeader>
              <CardContent>
                 {/* Pass the session stats */}
@@ -301,13 +299,13 @@ export default function Home() {
              </CardContent>
             </Card>
 
-             {/* New Card for Issue Log */}
-            <Card id="issue-log">
+             {/* New Card for Issue Log */}            <Card id="issue-log">
              <CardHeader>
                <CardTitle className="flex items-center gap-2">
                   <ListX className="w-5 h-5 text-primary" />
                  Issue Log (Rejected Items)
                </CardTitle>
+               <p className="text-xs text-muted-foreground">Human feedback tracking system</p>
              </CardHeader>
              <CardContent>
                 {/* Pass the logged issues */}
