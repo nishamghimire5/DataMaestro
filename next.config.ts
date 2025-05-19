@@ -18,7 +18,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: 'export', // Configure Next.js to export static files for Firebase
 };
 
 export default nextConfig;
