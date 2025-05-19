@@ -1,5 +1,7 @@
 # DataMaestro - AI-Powered CSV Processing Tool
 
+**Live Demo:** [https://data-maestro.vercel.app/](https://data-maestro.vercel.app/)
+
 ## About The Project
 
 DataMaestro is a web application designed to help users clean, process, and analyze CSV (Comma Separated Values) files. It leverages the power of Large Language Models (LLMs) through Genkit to provide intelligent suggestions for data cleaning, enable complex data transformations via natural language commands or SQL queries, and offer data profiling capabilities. The goal is to make CSV data wrangling more intuitive, efficient, and accessible.
@@ -15,7 +17,9 @@ The application provides a user-friendly interface for:
 
 ## Getting Started
 
-Follow these instructions to get a local copy up and running.
+The application is deployed and accessible at [https://data-maestro.vercel.app/](https://data-maestro.vercel.app/).
+
+For local development, follow these instructions to get a local copy up and running.
 
 ### Prerequisites
 
