@@ -25,11 +25,11 @@ jobs:
 
     - name: Authenticate Firebase with Service Account
       run: |
-        echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}' > /home/runner/firebase-key.json
-        export GOOGLE_APPLICATION_CREDENTIALS="/home/runner/firebase-key.json"
+        echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}' > $HOME/firebase-key.json
+        export GOOGLE_APPLICATION_CREDENTIALS="$HOME/firebase-key.json"
 
     - name: Set Firebase Project
-      run: firebase use --add --project datamaestro-459010
+      run: firebase use --project datamaestro-459010
 
     - name: Create .env.local for API Keys
       run: |
@@ -40,4 +40,6 @@ jobs:
       run: npm run build
 
     - name: Deploy to Firebase Hosting
+      env:
+        GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase-key.json
       run: firebase deploy
