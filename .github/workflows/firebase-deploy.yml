@@ -23,10 +23,13 @@ jobs:
     - name: Install Firebase CLI
       run: npm install -g firebase-tools
 
-    - name: Authenticate Firebase & Set Project
+    - name: Authenticate Firebase with Service Account
+      run: |
+        echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}' > /home/runner/firebase-key.json
+        export GOOGLE_APPLICATION_CREDENTIALS="/home/runner/firebase-key.json"
+
+    - name: Set Firebase Project
       run: firebase use --add --project datamaestro-459010
-      env:
-        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
     - name: Create .env.local for API Keys
       run: |
@@ -38,5 +41,3 @@ jobs:
 
     - name: Deploy to Firebase Hosting
       run: firebase deploy
-      env:
-        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
