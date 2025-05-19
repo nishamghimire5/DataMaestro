@@ -219,7 +219,7 @@ export default function Home() {
                 <AvatarImage src="https://picsum.photos/40/40" data-ai-hint="user avatar" alt="User Avatar" />
                 <AvatarFallback>DM</AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium">User</span>
+              <span className="text-sm font-medium">TheNisham</span>
             </div>
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <LogOut className="w-4 h-4" />
