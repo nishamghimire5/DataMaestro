@@ -198,7 +198,9 @@ function processSelectOperation(
   data: CsvRow[], 
   columnsAffected: string[],
   errors: string[]
-): void {  try {    // Parse the SELECT statement
+): void {  
+  try {    
+    // Parse the SELECT statement
     // Example: SELECT column1, column2 FROM data WHERE column3 = 'condition'
     const selectRegex = /SELECT\s+(.*?)\s+FROM\s+(?:data|table|\w+)(?:\s+WHERE\s+(.+))?/i;
     const match = sqlQuery.match(selectRegex);
@@ -247,26 +249,45 @@ function processSelectOperation(
     }
     
     columnsAffected.push(...selectedColumns);
-      // Process the WHERE clause if present
-    let filteredData = data;
+
+    // Determine the rows to operate on.
+    let sourceRowsForSelection: CsvRow[];
     if (whereClause) {
-      filteredData = processWhereClause(whereClause, headers, data, errors, sqlQuery);
+      // processWhereClause returns a new array of filtered rows.
+      // The original 'data' array (parameter) should not be modified by processWhereClause.
+      sourceRowsForSelection = processWhereClause(whereClause, headers, data, errors, sqlQuery);
+    } else {
+      // No WHERE clause, so we operate on all rows from the input 'data'.
+      // Crucially, create a shallow copy so that clearing 'data' (the output parameter)
+      // later doesn't affect our source for iteration.
+      sourceRowsForSelection = [...data];
     }
-    
-    // For SELECT, if we have selectedColumns that are different from all headers,
-    // we need to create a new array with only those columns
+
+    // Clear the original 'data' array (passed by reference) to populate it with results.
+    data.length = 0;
+
+    // Check if all columns are selected (SELECT *) or specific columns.
+    // The existing condition (selectedColumns.length !== headers.length || !headers.every(...))
+    // correctly identifies if 'selectedColumns' implies a subset or all columns.
     if (selectedColumns.length !== headers.length || !headers.every((h, i) => h === selectedColumns[i])) {
-      data.length = 0; // Clear the array without breaking reference
-      filteredData.forEach(row => {
+      // Specific columns are selected (e.g., SELECT column1, column2 FROM data)
+      sourceRowsForSelection.forEach(row => {
         const newRow: CsvRow = {};
-        selectedColumns.forEach(col => {
-          newRow[col] = row[col];
+        selectedColumns.forEach(col => { // 'selectedColumns' is the array of specific column names
+          if (Object.prototype.hasOwnProperty.call(row, col)) {
+            newRow[col] = row[col];
+          } else {
+            newRow[col] = undefined; // Column not found in row, or error in selection
+          }
         });
         data.push(newRow);
       });
     } else {
-      data.length = 0; // Clear the array without breaking reference
-      data.push(...filteredData);
+      // All columns are selected (SELECT * FROM data)
+      // 'sourceRowsForSelection' contains the correct rows (either all original or filtered).
+      sourceRowsForSelection.forEach(row => {
+        data.push(row); // Push the entire row object.
+      });
     }
   } catch (err: any) {
     errors.push(`SQL SELECT error: ${err.message}`);
@@ -474,64 +495,17 @@ function processWhereClause(
       return values.some(v => cellValue.toLowerCase() === v.toLowerCase());
     });
   }
-    // Handle basic equality condition: WHERE column = 'value'
-  const equalityRegex = /([^=\s]+)\s*=\s*['"]([^'"]*)['"]/i;
-  const equalityMatch = whereClause.match(equalityRegex);
-  
-  if (equalityMatch) {
-    let whereColumn = equalityMatch[1]?.trim();
-    const whereValue = equalityMatch[2];
-    
-    // Validate where column name
-    if (!whereColumn || !headers.includes(whereColumn)) {
-      const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
-      if (similarWhereColumn) {
-        errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
-        whereColumn = similarWhereColumn;
-      } else {        // Provide more helpful error message with available columns
-        // First check if the column name is also used as table name in the FROM clause
-        const fromTableMatch = sqlQuery ? sqlQuery.match(/FROM\s+(\w+)/i) : null;
-        let errorMsg;
-        
-        if (fromTableMatch && fromTableMatch[1].toLowerCase() === whereColumn.toLowerCase()) {
-          errorMsg = `Column '${whereColumn}' in WHERE clause not found. You used '${whereColumn}' as your table name in the FROM clause, which is causing confusion. In CSV data, use 'data' or 'table' as the table name instead.`;
-        } else {
-          errorMsg = `Column '${whereColumn}' in WHERE clause not found in data.`;
-        }
-        
-        if (headers.length > 0) {
-          errorMsg += ` Available columns: ${headers.join(', ')}`;
-          // If there's only one column and it's unnamed or has a numeric/default name
-          if (headers.length === 1 && (!isNaN(Number(headers[0])) || headers[0].startsWith('column') || headers[0].match(/^[0-9]+$/))) {
-            errorMsg += `. For single column CSV data, try using: WHERE ${headers[0]} = '${whereValue}'`;
-          }
-        } else {
-          errorMsg += " No columns found in the CSV data.";
-        }
-        
-        throw new Error(errorMsg);
-      }
-    }
-    
-    // Filter by equality
-    return data.filter(row => 
-      String(row[whereColumn!]).toLowerCase() === String(whereValue).toLowerCase()
-    );
-  }
 
-  // Handle numeric comparison: WHERE column > value
-  const comparisonRegex = /([^<>=\s]+)\s*([<>=]+|!=|<>)\s*([0-9.]+)/i;
+  // Handle general comparison operators: WHERE column [operator] 'value'
+  // Operators: =, !=, <>, >, <, >=, <=
+  const comparisonRegex = /([^<>=!\s]+)\s*([<>=!]{1,2})\s*['"]?([^'"]+)['"]?/i;
   const comparisonMatch = whereClause.match(comparisonRegex);
-  
+
   if (comparisonMatch) {
     let whereColumn = comparisonMatch[1]?.trim();
     const operator = comparisonMatch[2];
-    const compareValue = parseFloat(comparisonMatch[3]);
-    
-    if (isNaN(compareValue)) {
-      throw new Error('Comparison value must be a number');
-    }
-    
+    const whereValueStr = comparisonMatch[3]; // This is a string from regex
+
     // Validate where column name
     if (!whereColumn || !headers.includes(whereColumn)) {
       const similarWhereColumn = headers.find(h => h.toLowerCase() === whereColumn.toLowerCase());
@@ -539,28 +513,57 @@ function processWhereClause(
         errors.push(`WHERE clause column name case mismatch. Did you mean '${similarWhereColumn}'?`);
         whereColumn = similarWhereColumn;
       } else {
-        throw new Error(`Column '${whereColumn}' in WHERE clause not found in data.`);
+        const fromTableMatch = sqlQuery ? sqlQuery.match(/FROM\s+(\w+)/i) : null;
+        let errorMsg;
+        if (fromTableMatch && fromTableMatch[1].toLowerCase() === whereColumn.toLowerCase()) {
+          errorMsg = `Column '${whereColumn}' in WHERE clause not found. You used '${whereColumn}' as your table name in the FROM clause, which is causing confusion. In CSV data, use 'data' or 'table' as the table name instead.`;
+        } else {
+          errorMsg = `Column '${whereColumn}' in WHERE clause not found in data. Available columns: ${headers.join(', ')}.`;
+           if (headers.length === 1 && headers[0] === '' && data.length > 0 && typeof data[0][headers[0]] !== 'undefined') {
+             errorMsg += ` For single column CSVs without a header, try using a default column name like 'column1' or ensure your CSV has a header row.`;
+           }
+        }
+        throw new Error(errorMsg);
       }
     }
-    
-    // Filter based on numeric comparison
+
     return data.filter(row => {
-      const cellValue = parseFloat(String(row[whereColumn!]));
-      if (isNaN(cellValue)) return false; // Skip non-numeric values
-      
+      const cellValue = row[whereColumn!]; // cellValue can be string, number, boolean, null
+
+      // For numeric operators, convert both to Number. For others, compare as strings.
       switch (operator) {
-        case '>': return cellValue > compareValue;
-        case '<': return cellValue < compareValue;
-        case '>=': return cellValue >= compareValue;
-        case '<=': return cellValue <= compareValue;
-        case '=': return cellValue === compareValue;
-        case '!=': return cellValue !== compareValue;
-        case '<>': return cellValue !== compareValue;
-        default: return false;
+        case '=':
+          // Try numeric first if possible, else string (case-insensitive)
+          if (cellValue !== null && cellValue !== undefined && whereValueStr !== null && whereValueStr !== undefined &&
+              !isNaN(Number(cellValue)) && !isNaN(Number(whereValueStr))) {
+            return Number(cellValue) === Number(whereValueStr);
+          }
+          return String(cellValue).toLowerCase() === whereValueStr.toLowerCase();
+        case '!=':
+        case '<>':
+          if (cellValue !== null && cellValue !== undefined && whereValueStr !== null && whereValueStr !== undefined &&
+              !isNaN(Number(cellValue)) && !isNaN(Number(whereValueStr))) {
+            return Number(cellValue) !== Number(whereValueStr);
+          }
+          return String(cellValue).toLowerCase() !== whereValueStr.toLowerCase();
+        case '>':
+          // Number() will return NaN for non-numeric strings, and NaN > X is false.
+          return Number(cellValue) > Number(whereValueStr);
+        case '<':
+          return Number(cellValue) < Number(whereValueStr);
+        case '>=':
+          return Number(cellValue) >= Number(whereValueStr);
+        case '<=':
+          return Number(cellValue) <= Number(whereValueStr);
+        default:
+          // This case should ideally not be reached if regex is specific enough
+          errors.push(`Unsupported operator encountered: ${operator}`);
+          return false;
       }
     });
   }
-
-  // If we can't parse the WHERE clause, throw an error
-  throw new Error('Unsupported WHERE clause format. Use column = \'value\', column IN (\'value1\', \'value2\', ...), column LIKE \'pattern\', or column > number');
+  
+  // If no known WHERE clause pattern matched
+  errors.push(`Unsupported or invalid WHERE clause: "${whereClause}". Supported formats: column LIKE 'pattern', column IN ('v1', 'v2'), or column [=, !=, <>, >, <, >=, <=] 'value'`);
+  return []; // Return empty if clause is present but unparseable, or data if no WHERE clause was intended.
 }

@@ -1126,6 +1126,17 @@ export default function CsvProcessing() {
                 disabled={isProcessingCommands}
                 className="text-sm mb-2"
               />
+              <Button
+                onClick={handleProcessWithCommands}
+                disabled={isProcessingCommands || !directCommands.trim() || !currentCsvData}
+                className="w-full sm:w-auto mb-3"
+              >
+                {isProcessingCommands ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing Commands...</>
+                ) : (
+                  <><Wand2 className="mr-2 h-4 w-4" /> Process Commands</>
+                )}
+              </Button>
               <p className="text-xs text-muted-foreground mb-3">
                 For best results, click on the "Command Format Documentation" section below to see example command formats.
               </p>
@@ -1255,17 +1266,6 @@ export default function CsvProcessing() {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-              <Button
-                onClick={handleProcessWithCommands}
-                disabled={isProcessingCommands || !directCommands.trim() || !currentCsvData}
-                className="w-full sm:w-auto"
-              >
-                {isProcessingCommands ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing Commands...</>
-                ) : (
-                  <><Wand2 className="mr-2 h-4 w-4" /> Process Commands</>
-                )}
-              </Button>
               {commandError && (
                 <Alert variant="destructive" className="mt-4">
                   <AlertTriangle className="h-4 w-4" />
@@ -1331,8 +1331,20 @@ export default function CsvProcessing() {
                 rows={5}
                 disabled={isProcessingSql}
                 className="text-sm font-mono mb-2"
-              />              <p className="text-xs text-muted-foreground mb-3">
-                Use SQL-like queries to directly process the CSV data. Supported operations: SELECT, WHERE, UPDATE, DELETE, CASE, basic functions, and aggregations.
+              />
+              <Button
+                onClick={handleProcessWithSql}
+                disabled={isProcessingSql || !sqlQuery.trim() || !currentCsvData}
+                className="w-full sm:w-auto mb-3"
+              >
+                {isProcessingSql ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing CSV with SQL...</>
+                ) : (
+                  <><Database className="mr-2 h-4 w-4" /> Process with SQL</>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground mb-3">
+                Use SQL-like queries to directly process the CSV data. Supported operations: SELECT, WHERE, UPDATE, DELETE, CASE, and  basic functions.
               </p>
               <Accordion type="single" collapsible className="w-full mb-3">
                 <AccordionItem value="sql-format">
@@ -1421,17 +1433,140 @@ export default function CsvProcessing() {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-              <Button
-                onClick={handleProcessWithSql}
-                disabled={isProcessingSql || !sqlQuery.trim() || !currentCsvData}
-                className="w-full sm:w-auto"
-              >
-                {isProcessingSql ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing CSV with SQL...</>
-                ) : (
-                  <><Database className="mr-2 h-4 w-4" /> Process with SQL</>
-                )}
-              </Button>
+              {sqlResult && sqlResult.isSelectQuery && (
+                <div className="mt-4 border-t pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Search className="h-4 w-4 text-primary" />
+                      SELECT Query Results
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Showing filtered data without changing the original CSV
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    <Info className="h-4 w-4 inline mr-1 text-blue-500" />Results for SELECT commands are shown below. You can apply them to your current data or download them.
+                  </p>
+                  <div className="my-3 border rounded-md overflow-hidden">
+                    <div className="bg-muted p-2 font-medium text-sm flex justify-between items-center">
+                      <span>Data Preview</span>
+                      <span className="text-xs text-muted-foreground">
+                        {(() => {
+                          try {
+                            const parsed = Papa.parse(sqlResult.processedCsvData, { header: true });
+                            const totalRows = parsed.data.length;
+                            const displayRows = Math.min(5, totalRows);
+                            
+                            if (totalRows === 0) {
+                              return "No rows matched your query";
+                            } else if (totalRows <= 5) {
+                              return `Showing all ${totalRows} filtered rows`;
+                            } else {
+                              return `Showing ${displayRows} of ${totalRows} filtered rows`;
+                            }
+                          } catch (e) {
+                            return 'Could not parse data';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                    <div className="p-2 bg-card overflow-auto max-h-40">
+                      <div className="text-xs font-mono">
+                        {(() => {
+                          try {
+                            const parsed = Papa.parse(sqlResult.processedCsvData, { header: true });
+                            const rows = parsed.data.slice(0, 5);
+                            if (rows.length === 0) {
+                              return <p className="text-muted-foreground p-2 text-center">No rows matched your query</p>;
+                            }
+                            
+                            const headers = parsed.meta.fields || [];
+                            
+                            return (
+                              <table className="min-w-full">
+                                <thead>
+                                  <tr className="border-b">
+                                    {headers.map((header, i) => (
+                                      <th key={i} className="p-1 text-left bg-muted">{header}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {rows.map((row, i) => (                                    <tr key={i} className={i % 2 ? "bg-muted/30" : ""}>
+                                      {headers.map((header, j) => (
+                                        <td key={j} className="p-1 truncate max-w-[200px]">{String((row as Record<string, any>)[header] || '')}</td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            );
+                          } catch (e) {
+                            return <p className="text-muted-foreground p-2 text-center">Could not parse data preview</p>;
+                          }
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button 
+                        onClick={() => {
+                          if (sqlResult && sqlResult.processedCsvData) {
+                            setCurrentCsvData(sqlResult.processedCsvData);
+                            setIsIterativeProcessing(true);
+                            toast({
+                              title: "Changes Applied",
+                              description: "Query results have been applied to the current data.",
+                              variant: "default",
+                              action: <CheckCircle className="h-5 w-5 text-green-500" />,
+                            });
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        Apply These Results to Current Data
+                      </Button>
+                      
+                      <Button 
+                        onClick={() => {
+                          if (sqlResult && sqlResult.processedCsvData) {
+                            // Create a download link for the filtered data
+                            const blob = new Blob([sqlResult.processedCsvData], { type: 'text/csv;charset=utf-8' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = originalFileName ? 
+                              `filtered_${originalFileName}` : 
+                              `filtered_data_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                            
+                            toast({
+                              title: "Download Started",
+                              description: "Filtered data is being downloaded.",
+                              variant: "default",
+                            });
+                          }
+                        }}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Filtered Results
+                      </Button>
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground">
+                      You can apply these results to update your current data, download the filtered results, or continue working with the original dataset.
+                    </p>
+                  </div>
+                </div>
+              )}
               {sqlError && (
                 <Alert variant="destructive" className="mt-4">
                   <AlertTriangle className="h-4 w-4" />
@@ -1525,137 +1660,6 @@ export default function CsvProcessing() {
                           </Alert>
                         )}
                       </>
-                    )}{sqlResult.isSelectQuery && (
-                      <div className="mt-4 border-t pt-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-medium flex items-center gap-2">
-                            <Search className="h-4 w-4 text-primary" />
-                            SELECT Query Results
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            Showing filtered data without changing the original CSV
-                          </p>
-                        </div>
-                        
-                        {/* Data preview section */}
-                        <div className="my-3 border rounded-md overflow-hidden">
-                          <div className="bg-muted p-2 font-medium text-sm flex justify-between items-center">
-                            <span>Data Preview</span>                            <span className="text-xs text-muted-foreground">
-                              {(() => {
-                                try {
-                                  const parsed = Papa.parse(sqlResult.processedCsvData, { header: true });
-                                  const totalRows = parsed.data.length;
-                                  const displayRows = Math.min(5, totalRows);
-                                  
-                                  if (totalRows === 0) {
-                                    return "No rows matched your query";
-                                  } else if (totalRows <= 5) {
-                                    return `Showing all ${totalRows} filtered rows`;
-                                  } else {
-                                    return `Showing ${displayRows} of ${totalRows} filtered rows`;
-                                  }
-                                } catch (e) {
-                                  return 'Could not parse data';
-                                }
-                              })()}
-                            </span>
-                          </div>
-                          <div className="p-2 bg-card overflow-auto max-h-40">
-                            <div className="text-xs font-mono">
-                              {(() => {
-                                try {
-                                  const parsed = Papa.parse(sqlResult.processedCsvData, { header: true });
-                                  const rows = parsed.data.slice(0, 5);
-                                  if (rows.length === 0) {
-                                    return <p className="text-muted-foreground p-2 text-center">No rows matched your query</p>;
-                                  }
-                                  
-                                  const headers = parsed.meta.fields || [];
-                                  
-                                  return (
-                                    <table className="min-w-full">
-                                      <thead>
-                                        <tr className="border-b">
-                                          {headers.map((header, i) => (
-                                            <th key={i} className="p-1 text-left bg-muted">{header}</th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {rows.map((row, i) => (                                          <tr key={i} className={i % 2 ? "bg-muted/30" : ""}>
-                                            {headers.map((header, j) => (
-                                              <td key={j} className="p-1 truncate max-w-[200px]">{String((row as Record<string, any>)[header] || '')}</td>
-                                            ))}
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  );
-                                } catch (e) {
-                                  return <p className="text-muted-foreground p-2 text-center">Could not parse data preview</p>;
-                                }
-                              })()}
-                            </div>
-                          </div>
-                        </div>
-                          <div className="space-y-3">
-                          <div className="flex flex-wrap gap-2">
-                            <Button 
-                              onClick={() => {
-                                if (sqlResult.processedCsvData) {
-                                  setCurrentCsvData(sqlResult.processedCsvData);
-                                  setIsIterativeProcessing(true);
-                                  toast({
-                                    title: "Changes Applied",
-                                    description: "Query results have been applied to the current data.",
-                                    variant: "default",
-                                    action: <CheckCircle className="h-5 w-5 text-green-500" />,
-                                  });
-                                }
-                              }}
-                              variant="outline"
-                              size="sm"
-                            >
-                              <Save className="mr-2 h-4 w-4" />
-                              Apply These Results to Current Data
-                            </Button>
-                            
-                            <Button 
-                              onClick={() => {
-                                if (sqlResult.processedCsvData) {
-                                  // Create a download link for the filtered data
-                                  const blob = new Blob([sqlResult.processedCsvData], { type: 'text/csv;charset=utf-8' });
-                                  const url = URL.createObjectURL(blob);
-                                  const link = document.createElement('a');
-                                  link.href = url;
-                                  link.download = originalFileName ? 
-                                    `filtered_${originalFileName}` : 
-                                    `filtered_data_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                  URL.revokeObjectURL(url);
-                                  
-                                  toast({
-                                    title: "Download Started",
-                                    description: "Filtered data is being downloaded.",
-                                    variant: "default",
-                                  });
-                                }
-                              }}
-                              variant="secondary"
-                              size="sm"
-                            >
-                              <Download className="mr-2 h-4 w-4" />
-                              Download Filtered Results
-                            </Button>
-                          </div>
-                          
-                          <p className="text-xs text-muted-foreground">
-                            You can apply these results to update your current data, download the filtered results, or continue working with the original dataset.
-                          </p>
-                        </div>
-                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -1813,7 +1817,7 @@ export default function CsvProcessing() {
                       Field-Level Analysis:
                     </h4>
                     <ScrollArea className="h-96">
-                      {profileResult.fields.map((field, index) => (
+                      {profileResult.fields.map((field: any, index: number) => (
                         <Card key={index} className="bg-card border rounded-lg overflow-hidden shadow-sm mb-3">
                           <CardHeader className="p-3 bg-secondary/50">
                             <p className="font-semibold text-sm">
@@ -1840,9 +1844,9 @@ export default function CsvProcessing() {
                                 <strong>Value Distribution (Top {Math.min(5, field.valueDistribution.length)}):</strong>
                                 <ul className="list-disc pl-5 mt-1 text-xs text-muted-foreground">
                                   {field.valueDistribution
-                                    .sort((a, b) => b.count - a.count)
+                                    .sort((a: any, b: any) => b.count - a.count)
                                     .slice(0, 5)
-                                    .map((item) => (
+                                    .map((item: any) => (
                                       <li key={item.value} className="truncate" title={item.value}>{item.value}: {item.count}</li>
                                     ))}
                                   {field.valueDistribution.length > 5 && <li>... and {field.valueDistribution.length - 5} more</li>}
@@ -1856,7 +1860,7 @@ export default function CsvProcessing() {
                               <div className="mt-2">
                                 <strong className="text-destructive/90">Potential Issues:</strong>
                                 <ul className="list-disc pl-5 mt-1 text-xs text-destructive/80">
-                                  {field.potentialIssues.map((issue, i) => ( <li key={i}>{issue}</li> ))}
+                                  {field.potentialIssues.map((issue: string, i: number) => ( <li key={i}>{issue}</li> ))}
                                 </ul>
                               </div>
                             )}
@@ -1872,7 +1876,7 @@ export default function CsvProcessing() {
                       <FileText className="w-4 h-4"/> General Dataset Observations:
                     </h4>
                     <ul className="list-disc pl-5 text-sm space-y-1 text-muted-foreground">
-                      {profileResult.generalObservations.map((obs, i) => ( <li key= {i}>{obs}</li> ))}
+                      {profileResult.generalObservations.map((obs: string, i: number) => ( <li key= {i}>{obs}</li> ))}
                     </ul>
                   </div>
                 )}
