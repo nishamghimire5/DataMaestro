@@ -19,14 +19,14 @@ const EnglishCorrection: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [result, setResult] = useState<EnglishCorrectionOutput | null>(null);
   const [showCustomOptions, setShowCustomOptions] = useState<boolean>(false);
-  const [mode, setMode] = useState<'correct' | 'generate'>('correct');
-  // Combined format presets (merging previous use case and tone concepts)
+  const [mode, setMode] = useState<'correct' | 'generate'>('correct');  // Combined format presets (merging previous use case and tone concepts)
   const presets = [
     // Messages and Emails
     { id: 'casual-message', label: 'Casual Message', tone: 'casual', useCase: 'message', grammarStrictness: 'informal' },
     { id: 'professional-email', label: 'Professional Email', tone: 'professional', useCase: 'mail', grammarStrictness: 'formal' },
     
     // Social Media
+    { id: 'casual-tweet', label: 'Casual Tweet', tone: 'casual', useCase: 'tweet', grammarStrictness: 'informal' },
     { id: 'professional-tweet', label: 'Professional Tweet', tone: 'professional', useCase: 'professional_tweet', grammarStrictness: 'formal' },
     { id: 'funny-tweet', label: 'Funny Tweet', tone: 'funny', useCase: 'funny_tweet', grammarStrictness: 'informal' },
     { id: 'thread-tweet', label: 'Tweet Thread', tone: 'casual', useCase: 'thread_tweet', grammarStrictness: 'informal' },

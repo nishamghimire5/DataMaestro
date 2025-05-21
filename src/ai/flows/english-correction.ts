@@ -17,7 +17,7 @@ import {z} from 'genkit';
 export interface EnglishCorrectionInput {
   text: string;
   tone: 'casual' | 'formal' | 'professional' | 'funny' | 'sarcastic' | 'loving' | 'helpful' | string; // Allow custom strings too
-  useCase: 'mail' | 'message' | 'professional_tweet' | 'funny_tweet' | 'caption' | 'assignment' | 'thread_tweet' | string; // Added thread_tweet option
+  useCase: 'mail' | 'message' | 'tweet' | 'professional_tweet' | 'funny_tweet' | 'caption' | 'assignment' | 'thread_tweet' | string; // Added tweet and thread_tweet options
   grammarStrictness: 'informal' | 'formal' | 'genz_casual';
   enforceCharacterLimit?: boolean; // For Twitter/X posts with 280 char limit
   isGenerationMode?: boolean; // Whether this is a correction or generation from instructions
@@ -77,7 +77,7 @@ Please correct and style the following text according to these parameters:
 {{/if}}
 
 Guidelines:
-1. If the use case is "professional_tweet" or "funny_tweet" and enforceCharacterLimit is true, ensure the text is under 280 characters.
+1. If the use case is "tweet", "professional_tweet", or "funny_tweet" and enforceCharacterLimit is true, ensure the text is under 280 characters.
 2. If the use case is "thread_tweet", break the content into multiple tweets, each under 280 characters, and provide them as an array in threadParts.
 3. If grammarStrictness is "formal", use proper grammar, punctuation and avoid contractions.
 4. If grammarStrictness is "informal", be more relaxed with grammar but maintain clarity.
