@@ -29,6 +29,7 @@ import {
   Target, // Icon for Evaluation
   ListX, // Icon for Issue Log
   SpellCheck, // Icon for English Correction
+  FileText, // Icon for Documentation/README
 } from 'lucide-react';
 import DataAnomalyDetection, { type AnomalyWithStatus } from '@/components/data-anomaly-detection';
 import DataStandardization, { type StandardizationResult } from '@/components/data-standardization';
@@ -181,9 +182,7 @@ export default function Home() {
                 </a>
               </SidebarMenuItem>
             </SidebarMenu>
-          </SidebarGroup>
-
-          <SidebarGroup>
+          </SidebarGroup>          <SidebarGroup>
              <SidebarGroupLabel>Evaluation &amp; Analysis</SidebarGroupLabel>
              <SidebarMenu>
                 <SidebarMenuItem>
@@ -199,6 +198,19 @@ export default function Home() {
                     <SidebarMenuButton tooltip="Issue Log">
                       <ListX />
                       <span>Issue Log</span>
+                    </SidebarMenuButton>
+                  </a>
+                </SidebarMenuItem>
+             </SidebarMenu>
+          </SidebarGroup>
+          
+          <SidebarGroup>
+             <SidebarGroupLabel>Documentation</SidebarGroupLabel>
+             <SidebarMenu>                <SidebarMenuItem>
+                  <a href="https://github.com/nishamghimire5/DataMaestro?tab=readme-ov-file#datamaestro---ai-powered-csv-processing-with-sql-suggestion-and-command-modes" target="_blank" rel="noopener noreferrer">
+                    <SidebarMenuButton tooltip="View Complete Documentation">
+                      <FileText />
+                      <span>README</span>
                     </SidebarMenuButton>
                   </a>
                 </SidebarMenuItem>

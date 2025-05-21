@@ -387,13 +387,67 @@ The evaluation dashboard provides:
 - User feedback tracking for AI-generated suggestions
 - Performance monitoring for data processing operations
 
+## Limitations and Known Issues
+
+To provide complete transparency about DataMaestro's capabilities, here are the current limitations and known issues:
+
+### Processing Limitations
+
+- **Large Datasets:** Performance may degrade with very large CSV files (>10MB). For optimal performance, keep files under 5MB.
+- **Complex Nested Transformations:** While the system can handle many transformations, extremely complex nested operations might require breaking into multiple steps.
+- **Command Interpretation:** Natural language processing occasionally misinterprets commands with complex conditional logic or ambiguous wording.
+- **SQL Query Complexity:** The direct SQL parser handles common operations but has limited support for advanced SQL features like complex JOINs or window functions.
+
+### Feature-Specific Limitations
+
+- **Data Profiling:** Works best with well-structured data. Highly unstructured or inconsistent data may result in less insightful profiles.
+- **Anomaly Detection:** Focuses on common anomaly patterns. Very domain-specific anomalies may require custom detection strategies.
+- **English Correction:** While supporting multiple languages via translation, the core correction feature is optimized for English text.
+- **Data Standardization:** May struggle with highly irregular or custom formatting in certain fields.
+
+### Best Practices
+
+- **Iterative Approach:** Break complex transformations into smaller, verifiable steps
+- **Verify Results:** Always review the results of AI-generated operations, especially for critical data
+- **Command Clarity:** Be specific and clear in command mode instructions
+- **Try Multiple Approaches:** If one mode doesn't produce desired results, try an equivalent operation in another mode
+
 ## Future Enhancements
 
 - Support for more complex data transformation recipes.
+- Implementation of advanced techniques like storing data in dataframes or memory where AI can query iteratively, calculate, check data and solve complex queries by running multiple commands until the problem is solved.
+- Integration of high-performance local AI models to reduce latency and handle larger datasets.
 - Integration with more data sources or destinations.
 - Enhanced visualization capabilities for data analysis results.
+- Improvements to processing reliability and handling edge cases.
+- Expanding direct processing capabilities to reduce dependency on AI for common operations.
 
 ---
+
+## Usage Notes and Reliability
+
+DataMaestro performs complex operations on CSV data and while it's powerful, there are important usage considerations:
+
+### Reliability of Processing Modes
+
+- **Processing Mode Reliability:** While the CSV processing features work well in most cases, they might not be 100% reliable for all types of data or complex operations. Different modes have different strengths:
+
+  - **Command Mode:** Best for natural language instructions but may occasionally misinterpret complex or ambiguous commands
+  - **SQL Mode:** Most reliable for standard SQL operations but may struggle with very complex queries
+  - **Suggestion Mode:** Good for identifying data issues but suggestions might not catch all edge cases
+
+- **When Something Doesn't Work As Expected:**
+
+  1. **Modify Your Prompts:** Try rephrasing your command or query. Small changes in wording can significantly improve results
+  2. **Switch Processing Modes:** If a command isn't working properly, try the equivalent operation in SQL mode or as suggestions
+  3. **Check Documentation Examples:** The examples in this README provide patterns for effective commands
+  4. **Reduce Complexity:** Break complex operations into simpler steps
+
+- **AI Model Variation:** Results can vary slightly depending on the AI model being used (Gemini vs. local Ollama models)
+
+- **Data Size Considerations:** Very large datasets might impact processing performance and reliability
+
+Remember that AI-based features are continually improving but may not achieve 100% accuracy in all scenarios. For critical data processing tasks, always verify results.
 
 ## Troubleshooting
 
@@ -405,6 +459,10 @@ The evaluation dashboard provides:
 - **Genkit Flows Not Starting:**
   - Check the console output when running `npm run genkit:dev` or `npm run genkit:watch` for any error messages.
   - Ensure any required environment variables (like API keys) are correctly set in your `.env.local` file.
+- **CSV Processing Inconsistencies:**
+  - If command processing fails, try reformulating your command to be more explicit and specific
+  - For SQL issues, verify syntax and consider breaking complex queries into simpler ones
+  - If both command and SQL modes fail, use suggestion mode with more specific constraints
 
 ## Data Processing Architecture
 
