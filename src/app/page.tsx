@@ -137,10 +137,17 @@ export default function Home() {
             <h1 className="text-lg font-semibold">DataMaestro</h1>
           </div>
         </SidebarHeader>
-        <SidebarContent className="p-2 flex-grow overflow-y-auto">
-          <SidebarGroup>
+        <SidebarContent className="p-2 flex-grow overflow-y-auto">          <SidebarGroup>
             <SidebarGroupLabel>Core Features</SidebarGroupLabel>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <a href="#csv-processing">
+                  <SidebarMenuButton tooltip="CSV Processing">
+                    <TableProperties />
+                    <span>CSV Processing</span>
+                  </SidebarMenuButton>
+                </a>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <a href="#english-correction">
                   <SidebarMenuButton tooltip="English Correction">
@@ -162,14 +169,6 @@ export default function Home() {
                   <SidebarMenuButton tooltip="Data Standardization">
                     <FileCheck2 />
                     <span>Data Standardization</span>
-                  </SidebarMenuButton>
-                </a>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <a href="#csv-processing">
-                  <SidebarMenuButton tooltip="CSV Processing">
-                    <TableProperties />
-                    <span>CSV Processing</span>
                   </SidebarMenuButton>
                 </a>
               </SidebarMenuItem>
@@ -243,9 +242,19 @@ export default function Home() {
         <header className="sticky top-0 z-10 flex items-center h-14 px-4 border-b bg-background gap-4">
           <SidebarTrigger className="md:hidden" />
           <h2 className="text-lg font-semibold">LLM-Powered Data Enhancement Platform</h2>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-6 space-y-8"> {/* Increased spacing */}
+        </header>        <main className="flex-1 overflow-y-auto p-6 space-y-8"> {/* Increased spacing */}
+          <Card id="csv-processing">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                 <TableProperties className="w-5 h-5 text-primary" />
+                CSV Data Processing
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">Hybrid processing (Suggestion mode: AI, SQL mode: Custom parser with AI fallback, Command mode: AI)</p>
+            </CardHeader>
+            <CardContent>
+              <CsvProcessing />
+            </CardContent>
+          </Card>
           <Card id="english-correction">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -282,18 +291,6 @@ export default function Home() {
             <CardContent>
                {/* Pass the callback function */}
               <DataStandardization onValidation={handleStandardizationValidation} />
-            </CardContent>
-          </Card>
-          <Card id="csv-processing">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                 <TableProperties className="w-5 h-5 text-primary" />
-                CSV Data Processing
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">Hybrid processing (Suggestion mode: AI, SQL mode: Custom parser with AI fallback, Command mode: AI)</p>
-            </CardHeader>
-            <CardContent>
-              <CsvProcessing />
             </CardContent>
           </Card>
 
