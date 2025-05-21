@@ -153,14 +153,13 @@ const EnglishCorrection: React.FC = () => {  const [inputText, setInputText] = u
         {/* Group presets by category */}
         <div className="space-y-3">
           {/* Messages and Emails */}
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Communication:</p>
-            <div className="flex flex-wrap gap-2">
+          <div>            <p className="text-xs text-muted-foreground mb-1">Communication:</p>
+            <div className="flex flex-wrap gap-1 sm:gap-2">
               {presets.filter(p => ['message', 'mail'].includes(p.useCase)).map(p => (
                 <Badge 
                   key={p.id}
                   variant={preset === p.id ? "default" : "outline"} 
-                  className="cursor-pointer py-1 px-3 whitespace-nowrap"
+                  className="cursor-pointer py-0.5 sm:py-1 px-2 sm:px-3 whitespace-nowrap text-xs sm:text-sm"
                   onClick={() => setPreset(p.id)}
                 >
                   {p.label}
@@ -169,15 +168,14 @@ const EnglishCorrection: React.FC = () => {  const [inputText, setInputText] = u
             </div>
           </div>
           
-          {/* Social Media */}
-          <div>
+          {/* Social Media */}          <div>
             <p className="text-xs text-muted-foreground mb-1">Social Media:</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1 sm:gap-2">
               {presets.filter(p => p.useCase.includes('tweet') || p.useCase === 'caption').map(p => (
                 <Badge 
                   key={p.id}
                   variant={preset === p.id ? "default" : "outline"} 
-                  className="cursor-pointer py-1 px-3 whitespace-nowrap"
+                  className="cursor-pointer py-0.5 sm:py-1 px-2 sm:px-3 whitespace-nowrap text-xs sm:text-sm"
                   onClick={() => setPreset(p.id)}
                 >
                   {p.label}
@@ -186,15 +184,14 @@ const EnglishCorrection: React.FC = () => {  const [inputText, setInputText] = u
             </div>
           </div>
           
-          {/* Formal Writing */}
-          <div>
+          {/* Formal Writing */}          <div>
             <p className="text-xs text-muted-foreground mb-1">Formal Writing:</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1 sm:gap-2">
               {presets.filter(p => p.useCase === 'assignment').map(p => (
                 <Badge 
                   key={p.id}
                   variant={preset === p.id ? "default" : "outline"} 
-                  className="cursor-pointer py-1 px-3 whitespace-nowrap"
+                  className="cursor-pointer py-0.5 sm:py-1 px-2 sm:px-3 whitespace-nowrap text-xs sm:text-sm"
                   onClick={() => setPreset(p.id)}
                 >
                   {p.label}
@@ -206,14 +203,13 @@ const EnglishCorrection: React.FC = () => {  const [inputText, setInputText] = u
       </div>
 
       {/* Custom Options (Collapsible) */}
-      {showCustomOptions && (
-        <div className="pt-2 border-t">
+      {showCustomOptions && (      <div className="pt-2 border-t">
           <h3 className="text-sm font-medium mb-2">Custom Tone & Style:</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 sm:gap-x-4">
             <div>
-              <Label htmlFor="tone" className="text-sm">Tone:</Label>
+              <Label htmlFor="tone" className="text-sm block mb-1">Tone:</Label>
               <Select value={customTone} onValueChange={setCustomTone}>
-                <SelectTrigger id="tone" className="mt-1">
+                <SelectTrigger id="tone" className="w-full">
                   <SelectValue placeholder="Select tone" />
                 </SelectTrigger>
                 <SelectContent>
@@ -229,9 +225,9 @@ const EnglishCorrection: React.FC = () => {  const [inputText, setInputText] = u
             </div>
 
             <div>
-              <Label htmlFor="grammarStyle" className="text-sm">Grammar Style:</Label>
+              <Label htmlFor="grammarStyle" className="text-sm block mb-1">Grammar Style:</Label>
               <Select value={customGrammarStyle} onValueChange={setCustomGrammarStyle}>
-                <SelectTrigger id="grammarStyle" className="mt-1">
+                <SelectTrigger id="grammarStyle" className="w-full">
                   <SelectValue placeholder="Select grammar style" />
                 </SelectTrigger>
                 <SelectContent>

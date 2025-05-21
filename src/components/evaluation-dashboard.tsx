@@ -22,13 +22,13 @@ export default function EvaluationDashboard({ stats }: EvaluationDashboardProps)
   
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Anomaly Detection Accuracy</CardTitle>
+          <CardHeader className="px-3 py-3 sm:px-4 sm:py-4">
+            <CardTitle className="text-base sm:text-lg">Anomaly Detection Accuracy</CardTitle>
             <CardDescription>Based on human-in-the-loop validation.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="px-3 py-3 sm:px-4 sm:py-4 space-y-2">
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>{anomalyDetection.approved} Approved</span>
               <span>{anomalyDetection.rejected} Rejected</span>
@@ -37,11 +37,11 @@ export default function EvaluationDashboard({ stats }: EvaluationDashboardProps)
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Standardization Accuracy</CardTitle>
+          <CardHeader className="px-3 py-3 sm:px-4 sm:py-4">
+            <CardTitle className="text-base sm:text-lg">Standardization Accuracy</CardTitle>
             <CardDescription>Based on human-in-the-loop validation.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="px-3 py-3 sm:px-4 sm:py-4 space-y-2">
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>{standardization.approved} Approved</span>
               <span>{standardization.rejected} Rejected</span>

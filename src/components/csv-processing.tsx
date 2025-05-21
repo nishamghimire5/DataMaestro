@@ -1282,22 +1282,21 @@ export default function CsvProcessing() {
                     <CardDescription>{commandResult.summary}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <h4 className="font-medium mb-2">Applied Actions</h4>
-                    <div className="overflow-auto max-h-60">
+                    <h4 className="font-medium mb-2">Applied Actions</h4>                    <div className="overflow-x-auto overflow-y-auto max-h-60">
                       <table className="w-full text-sm">
                         <thead className="bg-muted text-muted-foreground">
                           <tr>
-                            <th className="p-2 text-left">Action</th>
-                            <th className="p-2 text-right">Rows Affected</th>
-                            <th className="p-2 text-left">Columns Affected</th>
+                            <th className="p-1 sm:p-2 text-left">Action</th>
+                            <th className="p-1 sm:p-2 text-right whitespace-nowrap">Rows Affected</th>
+                            <th className="p-1 sm:p-2 text-left whitespace-nowrap">Columns Affected</th>
                           </tr>
                         </thead>
                         <tbody>
                           {commandResult.appliedActions.map((action, idx) => (
                             <tr key={idx} className="border-b border-muted">
-                              <td className="p-2">{action.description}</td>
-                              <td className="p-2 text-right">{action.affectedRows}</td>
-                              <td className="p-2">{action.affectedColumns.join(', ')}</td>
+                              <td className="p-1 sm:p-2">{action.description}</td>
+                              <td className="p-1 sm:p-2 text-right">{action.affectedRows}</td>
+                              <td className="p-1 sm:p-2 truncate max-w-[120px] sm:max-w-none">{action.affectedColumns.join(', ')}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1482,24 +1481,26 @@ export default function CsvProcessing() {
                             
                             const headers = parsed.meta.fields || [];
                             
-                            return (
-                              <table className="min-w-full">
-                                <thead>
-                                  <tr className="border-b">
-                                    {headers.map((header, i) => (
-                                      <th key={i} className="p-1 text-left bg-muted">{header}</th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {rows.map((row, i) => (                                    <tr key={i} className={i % 2 ? "bg-muted/30" : ""}>
-                                      {headers.map((header, j) => (
-                                        <td key={j} className="p-1 truncate max-w-[200px]">{String((row as Record<string, any>)[header] || '')}</td>
+                            return (                              <div className="overflow-x-auto">
+                                <table className="min-w-full">
+                                  <thead>
+                                    <tr className="border-b">
+                                      {headers.map((header, i) => (
+                                        <th key={i} className="p-1 text-left bg-muted whitespace-nowrap">{header}</th>
                                       ))}
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                                  </thead>
+                                  <tbody>
+                                    {rows.map((row, i) => (                                      
+                                      <tr key={i} className={i % 2 ? "bg-muted/30" : ""}>
+                                        {headers.map((header, j) => (
+                                          <td key={j} className="p-1 max-w-[100px] sm:max-w-[200px] truncate">{String((row as Record<string, any>)[header] || '')}</td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
                             );
                           } catch (e) {
                             return <p className="text-muted-foreground p-2 text-center">Could not parse data preview</p>;
@@ -1583,29 +1584,28 @@ export default function CsvProcessing() {
                     <CardDescription>{sqlResult.summary}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <h4 className="font-medium mb-2">Column Information</h4>
-                    <div className="overflow-auto max-h-60">
+                    <h4 className="font-medium mb-2">Column Information</h4>                    <div className="overflow-x-auto overflow-y-auto max-h-60">
                       <table className="w-full text-sm">
                         <thead className="bg-muted text-muted-foreground">
                           <tr>
-                            <th className="p-2 text-left">Column</th>
-                            <th className="p-2 text-left">Data Type</th>
-                            <th className="p-2 text-right">Non-Null Values</th>
-                            <th className="p-2 text-right">Unique Values</th>
+                            <th className="p-1 sm:p-2 text-left whitespace-nowrap">Column</th>
+                            <th className="p-1 sm:p-2 text-left whitespace-nowrap">Data Type</th>
+                            <th className="p-1 sm:p-2 text-right whitespace-nowrap">Non-Null</th>
+                            <th className="p-1 sm:p-2 text-right whitespace-nowrap">Unique</th>
                           </tr>
                         </thead>
                         <tbody>
                           {sqlResult.columnInfo.map((col, idx) => (
                             <tr key={idx} className="border-b border-muted">
-                              <td className="p-2 font-mono">{col.name}</td>
-                              <td className="p-2">{col.dataType}</td>
-                              <td className="p-2 text-right">{col.nonNullCount}</td>
-                              <td className="p-2 text-right">{col.uniqueValueCount}</td>
+                              <td className="p-1 sm:p-2 font-mono truncate max-w-[100px] sm:max-w-none">{col.name}</td>
+                              <td className="p-1 sm:p-2 whitespace-nowrap">{col.dataType}</td>
+                              <td className="p-1 sm:p-2 text-right whitespace-nowrap">{col.nonNullCount}</td>
+                              <td className="p-1 sm:p-2 text-right whitespace-nowrap">{col.uniqueValueCount}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                    </div>                    {sqlResult.errorLog && sqlResult.errorLog.length > 0 && (
+                    </div>{sqlResult.errorLog && sqlResult.errorLog.length > 0 && (
                       <>
                         {/* Display warnings separately from errors */}
                         {sqlResult.errorLog.some(err => err.startsWith('Warning:')) && (
@@ -1803,8 +1803,7 @@ export default function CsvProcessing() {
                 <CardTitle className="flex items-center gap-2"><BarChartHorizontalBig className="w-5 h-5 text-primary"/>CSV Data Profile ({isIterativeProcessing ? 'Processed Data' : 'Original Data'})</CardTitle>
                 <CardDescription>{profileResult.overallSummary}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+              <CardContent className="space-y-4">                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-sm mb-4">
                   <div><strong>Total Records Analyzed:</strong> {profileResult.recordCount}</div>
                   <div><strong>Total Fields Found:</strong> {profileResult.fieldCount}</div>
                 </div>
@@ -1824,15 +1823,14 @@ export default function CsvProcessing() {
                               Field: <code className="bg-muted px-1 py-0.5 rounded">{field.fieldName}</code>
                             </p>
                           </CardHeader>
-                          <CardContent className="p-3 text-sm space-y-1.5">
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                              <p><strong>Inferred Type:</strong> {field.inferredType}</p>
+                          <CardContent className="p-3 text-sm space-y-1.5">                            <div className="grid grid-cols-1 xs:grid-cols-2 gap-x-2 sm:gap-x-4 gap-y-1">
+                              <p className="whitespace-nowrap"><strong>Inferred Type:</strong> <span className="break-all inline-block">{field.inferredType}</span></p>
                               <p><strong>Missing:</strong> {field.missingValues} ({field.missingPercentage.toFixed(1)}%)</p>
                               <p><strong>Unique Values:</strong> {field.uniqueValues}</p>
                               {field.stats && (
                                 <>
-                                  {field.stats.min !== undefined && <p><strong>Min:</strong> {field.stats.min}</p>}
-                                  {field.stats.max !== undefined && <p><strong>Max:</strong> {field.stats.max}</p>}
+                                  {field.stats.min !== undefined && <p className="break-all"><strong>Min:</strong> {field.stats.min}</p>}
+                                  {field.stats.max !== undefined && <p className="break-all"><strong>Max:</strong> {field.stats.max}</p>}
                                   {field.stats.mean !== undefined && <p><strong>Mean:</strong> {field.stats.mean.toFixed(2)}</p>}
                                   {field.stats.median !== undefined && <p><strong>Median:</strong> {field.stats.median}</p>}
                                   {field.stats.stddev !== undefined && <p><strong>Std Dev:</strong> {field.stats.stddev.toFixed(2)}</p>}

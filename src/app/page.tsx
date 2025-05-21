@@ -128,9 +128,8 @@ export default function Home() {
     }
   }, []);
 
-
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={false}>
       <Sidebar>
         <SidebarHeader className="p-4">
           <div className="flex items-center gap-2">
@@ -248,88 +247,89 @@ export default function Home() {
             </Button>
           </div>
         </SidebarFooter>
-      </Sidebar>
-
-      <SidebarInset className="flex flex-col">
-        <header className="sticky top-0 z-10 flex items-center h-14 px-4 border-b bg-background gap-4">
-          <SidebarTrigger className="md:hidden" />
-          <h2 className="text-lg font-semibold">LLM-Powered Data Enhancement Platform</h2>
-        </header>        <main className="flex-1 overflow-y-auto p-6 space-y-8"> {/* Increased spacing */}
-          <Card id="csv-processing">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+      </Sidebar>      <SidebarInset className="flex flex-col">        <header className="sticky top-0 z-10 flex items-center justify-between h-14 px-2 sm:px-4 border-b bg-background">
+          <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
+            <SidebarTrigger />
+            <h2 className="text-base sm:text-lg font-semibold overflow-hidden text-ellipsis whitespace-nowrap">LLM-Powered Data Enhancement</h2>
+          </div>
+          <div className="hidden sm:block">
+            <select className="text-xs bg-transparent border-none focus:outline-none focus:ring-0 text-muted-foreground cursor-pointer">
+              <option value="csv">CSV Processing</option>
+              <option value="english">English Correction</option>
+              <option value="anomaly">Anomaly Detection</option>
+              <option value="standard">Standardization</option>
+            </select>
+          </div>
+        </header><main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 md:space-y-8"> {/* Responsive spacing */}          <Card id="csv-processing">
+            <CardHeader className="px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 flex-wrap">
                  <TableProperties className="w-5 h-5 text-primary" />
                 CSV Data Processing
               </CardTitle>
               <p className="text-xs text-muted-foreground">Hybrid processing (Suggestion mode: AI, SQL mode: Custom parser with AI fallback, Command mode: AI)</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 sm:px-6 overflow-x-auto">
               <CsvProcessing />
             </CardContent>
-          </Card>
-          <Card id="english-correction">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          </Card>          <Card id="english-correction">
+            <CardHeader className="px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 flex-wrap">
                 <SpellCheck className="w-5 h-5 text-primary" />
                 English Language Correction
               </CardTitle>
               <p className="text-xs text-muted-foreground">Powered by Gemini</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 sm:px-6 overflow-x-auto">
               <EnglishCorrection />
             </CardContent>
-          </Card>
-          <Card id="anomaly-detection">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          </Card>          <Card id="anomaly-detection">
+            <CardHeader className="px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 flex-wrap">
                 <ScanSearch className="w-5 h-5 text-primary" />
                 Data Anomaly Detection
               </CardTitle>
               <p className="text-xs text-muted-foreground">Processed with AI</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 sm:px-6 overflow-x-auto">
               {/* Pass the callback function */}
               <DataAnomalyDetection onValidation={handleAnomalyValidation} />
             </CardContent>
-          </Card>
-          <Card id="standardization">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          </Card>          <Card id="standardization">
+            <CardHeader className="px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 flex-wrap">
                 <FileCheck2 className="w-5 h-5 text-primary" />
                 Data Standardization
               </CardTitle>
               <p className="text-xs text-muted-foreground">Processed with AI</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 sm:px-6 overflow-x-auto">
                {/* Pass the callback function */}
               <DataStandardization onValidation={handleStandardizationValidation} />
             </CardContent>
-          </Card>
-
-          {/* New Card for Data Profiling */}
+          </Card>          {/* New Card for Data Profiling */}
           <Card id="profiling">
-             <CardHeader>
-               <CardTitle className="flex items-center gap-2">
+             <CardHeader className="px-3 sm:px-6">
+               <CardTitle className="flex items-center gap-2 flex-wrap">
                   <ClipboardList className="w-5 h-5 text-primary" />
                  Data Profiling
                </CardTitle>
                <p className="text-xs text-muted-foreground">Processed with AI</p>
              </CardHeader>
-             <CardContent>
+             <CardContent className="px-2 sm:px-6 overflow-x-auto">
                <DataProfiling />
              </CardContent>
           </Card>
 
           {/* New Card for Evaluation Dashboard */}
           <Card id="evaluation">
-             <CardHeader>
-               <CardTitle className="flex items-center gap-2">
+             <CardHeader className="px-3 sm:px-6">
+               <CardTitle className="flex items-center gap-2 flex-wrap">
                   <Target className="w-5 h-5 text-primary" />
                  Evaluation Dashboard
                </CardTitle>
                <p className="text-xs text-muted-foreground">Analytics dashboard with human feedback tracking</p>
              </CardHeader>
-             <CardContent>
+             <CardContent className="px-2 sm:px-6 overflow-x-auto">
                 {/* Pass the session stats */}
                <EvaluationDashboard stats={sessionStats} />
              </CardContent>
@@ -337,14 +337,14 @@ export default function Home() {
 
           {/* New Card for Issue Log */}
           <Card id="issue-log">
-             <CardHeader>
-               <CardTitle className="flex items-center gap-2">
+             <CardHeader className="px-3 sm:px-6">
+               <CardTitle className="flex items-center gap-2 flex-wrap">
                   <ListX className="w-5 h-5 text-primary" />
                  Issue Log (Rejected Items)
                </CardTitle>
                <p className="text-xs text-muted-foreground">Human feedback tracking system</p>
              </CardHeader>
-             <CardContent>
+             <CardContent className="px-2 sm:px-6 overflow-x-auto">
                 {/* Pass the logged issues */}
                <IssueLog issues={loggedIssues} />
              </CardContent>

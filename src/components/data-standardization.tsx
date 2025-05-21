@@ -130,10 +130,9 @@ export default function DataStandardization({ onValidation }: DataStandardizatio
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+    <div className="space-y-6">      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3 items-end">
         <div>
-          <Label htmlFor="fieldName">Field Name *</Label>
+          <Label htmlFor="fieldName" className="block mb-1">Field Name *</Label>
           <Input
             id="fieldName"
             placeholder="e.g., signup_date"
@@ -142,10 +141,11 @@ export default function DataStandardization({ onValidation }: DataStandardizatio
             disabled={isLoading}
             required
             aria-required="true"
+            className="w-full"
           />
         </div>
         <div>
-          <Label htmlFor="fieldValue">Field Value *</Label>
+          <Label htmlFor="fieldValue" className="block mb-1">Field Value *</Label>
           <Input
             id="fieldValue"
             placeholder="e.g., Jan 15, 2023"
@@ -154,10 +154,11 @@ export default function DataStandardization({ onValidation }: DataStandardizatio
             disabled={isLoading}
             required
             aria-required="true"
+            className="w-full"
           />
         </div>
         <div>
-          <Label htmlFor="fieldType">Field Type *</Label>
+          <Label htmlFor="fieldType" className="block mb-1">Field Type *</Label>
           <Select
             value={fieldType}
             onValueChange={(value: FieldType | '') => setFieldType(value)}
@@ -241,23 +242,21 @@ export default function DataStandardization({ onValidation }: DataStandardizatio
                      </Badge>
                  </div>
              </CardHeader>
-           <CardContent className="space-y-4 pt-4">
-
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+           <CardContent className="space-y-4 pt-4">             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div className="space-y-1">
                     <p className="text-muted-foreground">Field Name</p>
-                    <p className="font-medium">{result.fieldName}</p>
+                    <p className="font-medium break-words">{result.fieldName}</p>
                 </div>
                  <div className="space-y-1">
                     <p className="text-muted-foreground">Original Value</p>
-                    <p className="font-mono bg-muted px-1 rounded break-all">{result.originalValue}</p>
+                    <p className="font-mono bg-muted px-1 py-0.5 rounded break-all">{result.originalValue}</p>
                  </div>
                 <div className="space-y-1">
                     <p className="text-muted-foreground">Standardized Value</p>
-                    <p className="font-mono bg-primary/10 text-green-700 px-1 rounded break-all font-semibold">{result.standardizedValue}</p>
+                    <p className="font-mono bg-primary/10 text-green-700 px-1 py-0.5 rounded break-all font-semibold">{result.standardizedValue}</p>
                 </div>
                 {result.explanation && (
-                    <div className="space-y-1 md:col-span-2">
+                    <div className="space-y-1 sm:col-span-2">
                         <p className="text-muted-foreground">Explanation</p>
                         <p className="italic text-xs">{result.explanation}</p>
                     </div>
