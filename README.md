@@ -17,6 +17,15 @@ DataMaestro is a web application designed to help users clean, process, and anal
 - **Data Profiling:** Analyzes CSV data to provide comprehensive insights about its structure, quality, and statistical properties (`src/ai/flows/data-profiling.ts`). This AI-driven process helps users understand their data before transformation.
 - **Data Standardization:** Ensures consistency across data formats like dates, addresses, and text (`src/ai/flows/data-standardization.ts`). This AI-powered feature helps maintain data quality standards.
 - **Data Anomaly Detection:** Identifies outliers, inconsistencies, and errors in data (`src/ai/flows/data-anomaly-detection.ts`). This AI-driven system helps maintain data integrity by flagging potential issues.
+- **English Language Correction:** Enhances text by correcting grammar, adjusting tone/style, and formatting for different use cases (`src/ai/flows/english-correction.ts`). The feature offers:
+  - **Correction Mode:** Improves existing text with different tones and styles
+  - **Generation Mode:** Creates new text from simple instructions (emails, tweets, etc.)
+  - **Smart Formatting:** Options for emails, tweets (including thread creation with character limits), and formal writing
+  - **Style Options:** Various tones (casual, professional, funny, etc.) and grammar styles (including Gen Z casual)
+  - **Integrated Translation:** Translation instructions can be included directly in the text prompt:
+    - Supports translating to numerous languages through natural language instructions
+    - Can provide native script and optional romanization based on the user's prompt
+    - Example prompts: "translate to Spanish" or "translate to Chinese and include romanization"
 - **Evaluation Dashboard:** Provides metrics on accuracy and performance of data processing operations (`src/components/evaluation-dashboard.tsx`). This helps track the effectiveness of AI-generated suggestions.
 
 The overall goal is to make CSV data wrangling more intuitive, efficient, and accessible by combining the strengths of direct processing and AI.

@@ -11,16 +11,18 @@
  * @exports EnglishCorrectionOutput - The return type for the correctEnglish function.
  */
 
-import {ai} from '@/ai/ai-instance';
-import {z} from 'genkit';
+import { ai } from '@/ai/ai-instance';
+import { z } from 'genkit';
 
 export interface EnglishCorrectionInput {
   text: string;
   tone: 'casual' | 'formal' | 'professional' | 'funny' | 'sarcastic' | 'loving' | 'helpful' | string; // Allow custom strings too
   useCase: 'mail' | 'message' | 'tweet' | 'professional_tweet' | 'funny_tweet' | 'caption' | 'assignment' | 'thread_tweet' | string; // Added tweet and thread_tweet options
-  grammarStrictness: 'informal' | 'formal' | 'genz_casual';
+  grammarStrictness: 'informal' | 'formal' | 'genz_casual' | string; // Allow custom strings too
   enforceCharacterLimit?: boolean; // For Twitter/X posts with 280 char limit
   isGenerationMode?: boolean; // Whether this is a correction or generation from instructions
+  targetLanguage?: string; // Target language for translation
+  includeRomanization?: boolean; // Whether to include romanized version for non-Latin scripts
 }
 
 export interface EnglishCorrectionOutput {
@@ -35,9 +37,11 @@ const EnglishCorrectionInputSchema = z.object({
   text: z.string().describe('The text to be corrected or the instructions for generating text.'),
   tone: z.string().describe('The desired tone of the corrected text (e.g., casual, formal, professional, funny)'),
   useCase: z.string().describe('The use case for the text (e.g., mail, message, tweet, caption, assignment)'),
-  grammarStrictness: z.enum(['informal', 'formal', 'genz_casual']).describe('The level of grammar strictness'),
+  grammarStrictness: z.string().describe('The level of grammar strictness (e.g., informal, formal, genz_casual)'),
   enforceCharacterLimit: z.boolean().optional().describe('Whether to enforce the Twitter character limit of 280 characters'),
   isGenerationMode: z.boolean().optional().describe('Whether this is a correction or generation from instructions'),
+  targetLanguage: z.string().optional().describe('The target language to translate the text into'),
+  includeRomanization: z.boolean().optional().describe('Whether to include romanized version of non-Latin script translations'),
 });
 
 // Define the output schema for English correction
@@ -66,6 +70,9 @@ I will provide you with instructions for generating content. Create a complete t
 - Use case: {{{useCase}}}
 - Grammar strictness level: {{{grammarStrictness}}}
 - Enforce character limit: {{{enforceCharacterLimit}}}
+{{#if targetLanguage}}
+- Target language: {{{targetLanguage}}}
+{{/if}}
 
 {{else}}
 Please correct and style the following text according to these parameters:
@@ -74,6 +81,9 @@ Please correct and style the following text according to these parameters:
 - Use case: {{{useCase}}}
 - Grammar strictness level: {{{grammarStrictness}}}
 - Enforce character limit: {{{enforceCharacterLimit}}}
+{{#if targetLanguage}}
+- Target language: {{{targetLanguage}}}
+{{/if}}
 {{/if}}
 
 Guidelines:
@@ -92,6 +102,44 @@ Guidelines:
 6. For emails (useCase = "mail"), ALWAYS use a formal and professional tone regardless of other settings. Avoid direct, rude, or attitude-showing language. Include proper salutations and closings.
 7. Provide 2-3 helpful suggestions for improving the text further.
 8. For tweets, include the character count of each tweet.
+9. If a target language is provided, YOU MUST ABSOLUTELY translate the entire text to that language:
+   - This is a CRITICAL INSTRUCTION: You MUST translate the text when a target language is specified   {{#if includeRomanization}}
+   - YOU MUST FOLLOW THIS EXACT FORMAT for translations, with both sections clearly labeled:
+     [Native Script]: <full text translated into native script of target language>
+     [Romanized]: <full text transliterated into Latin alphabet>
+   
+   - For languages that use the Latin script (Spanish, French, German, Italian, etc.):
+     - The [Native Script] section will be the translation in that language
+     - The [Romanized] section should contain exactly the same text as [Native Script]
+   
+   - For languages using non-Latin scripts (Chinese, Japanese, Arabic, Russian, Hindi, Nepali, Korean, etc.):
+     - The [Native Script] section must contain text in the native script of the language
+     - The [Romanized] section MUST contain the romanized/transliterated version in Latin alphabet
+   
+   - SPECIFIC ROMANIZATION INSTRUCTIONS:
+     - Chinese: Use standard Pinyin romanization with tone marks (e.g., Nǐ hǎo)
+     - Japanese: Use Hepburn romanization (e.g., Konnichiwa)
+     - Korean: Use Revised Romanization (e.g., Annyeonghaseyo)
+     - Russian: Use standard transliteration (e.g., Privet)
+     - Arabic: Use common transliteration (e.g., Marhaban)
+     - Hindi: Use standard transliteration (e.g., Namaste)
+     - Nepali: Use standardized transliteration following "Romanized Nepali" conventions (e.g., "Namaste" for नमस्ते)
+     
+   - PAY SPECIAL ATTENTION TO NEPALI:
+     - Ensure Nepali script (Devanagari) appears correctly in [Native Script]
+     - Include PROPER romanization in [Romanized] section
+     - Example for नेपाली: "nepālī" with correct diacritical marks where appropriate
+     - Do not skip either section for ANY language
+   {{else}}
+   - Provide ONLY the translation in the native script of the target language
+   - Do not include any special formatting, section headers, or labels like [Native Script] or [Romanized]
+   - For languages using non-Latin scripts (Chinese, Japanese, Arabic, Russian, Hindi, Nepali, Korean, etc.), provide only the native script
+   - For all languages, do not provide any romanization/transliteration or explanations
+   - The output should ONLY be the translated text, nothing else
+   {{/if}}
+   - ALWAYS apply all requested tone, style, and format settings to the translation
+   - ALWAYS maintain the cultural nuances appropriate for the target language
+   - IMPORTANT: Your translation should ONLY contain the translated text. Do NOT include the original English query, any part of these instructions, or any other conversational text.
 
 {{#if isGenerationMode}}
 For text generation mode:
@@ -105,34 +153,35 @@ Make sure the corrected text maintains the original meaning while applying the r
 });
 
 // Define the flow for English correction
-const correctEnglishFlow = ai.defineFlow<
-  typeof EnglishCorrectionInputSchema,
-  typeof EnglishCorrectionOutputSchema
->({
-  name: 'correctEnglishFlow',
-  inputSchema: EnglishCorrectionInputSchema,
-  outputSchema: EnglishCorrectionOutputSchema,
-},
-async input => {
-  const { output } = await correctEnglishPrompt(input);
-  return output!;
-});
+const correctEnglishFlow = ai.defineFlow(
+  {
+    name: 'correctEnglishFlow',
+    inputSchema: EnglishCorrectionInputSchema,
+    outputSchema: EnglishCorrectionOutputSchema,
+  },
+  async (input: z.infer<typeof EnglishCorrectionInputSchema>) => {
+    const { output } = await correctEnglishPrompt(input);
+    return output!;
+  }
+);
 
 // The main function that the component will call
 export async function correctEnglish(input: EnglishCorrectionInput): Promise<EnglishCorrectionOutput> {
   console.log('AI English Correction called with:', input);
-  
   try {
     // Process the correction through our AI flow
+    // Note: Translation requests are handled directly through the prompt text
+    // Users can specify translation needs in their text input
     const result = await correctEnglishFlow(input);
     
     // Process tweets for character limits if needed
-    if ((input.useCase.includes('tweet') || input.useCase === 'thread_tweet')) {
+    if (input.useCase === 'tweet' || input.useCase === 'professional_tweet' || 
+        input.useCase === 'funny_tweet' || input.useCase === 'thread_tweet') {
       if (!result.characterCount) {
         result.characterCount = result.correctedText.length;
       }
       
-      // Ensure thread parts are properly set when using thread_tweet
+      // Ensure thread parts are properly set ONLY when using thread_tweet specifically
       if (input.useCase === 'thread_tweet' && !result.threadParts) {
         // If AI didn't create thread parts, create them manually
         const maxLength = 280;
@@ -183,11 +232,17 @@ export async function correctEnglish(input: EnglishCorrectionInput): Promise<Eng
     }
     
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in English correction AI flow:', error);
+    
+    // Generic error handling for all issues
     return {
       correctedText: input.text,
-      suggestions: ['Error processing your text. Please try again.'],
+      suggestions: [
+        'Error processing your text. Please try again.',
+        'If the error persists, try simplifying your text or using shorter sentences.',
+        'For translation requests, try including language instructions in your prompt (e.g., "translate this to Spanish").'
+      ],
     };
   }
 }
