@@ -28,6 +28,7 @@ import {
   ClipboardList, // Icon for Profiling
   Target, // Icon for Evaluation
   ListX, // Icon for Issue Log
+  SpellCheck, // Icon for English Correction
 } from 'lucide-react';
 import DataAnomalyDetection, { type AnomalyWithStatus } from '@/components/data-anomaly-detection';
 import DataStandardization, { type StandardizationResult } from '@/components/data-standardization';
@@ -35,6 +36,7 @@ import CsvProcessing from '@/components/csv-processing';
 import DataProfiling from '@/components/data-profiling'; // Import new component
 import EvaluationDashboard from '@/components/evaluation-dashboard'; // Import new component
 import IssueLog from '@/components/issue-log'; // Import new component
+import EnglishCorrection from '@/components/english-correction'; // Import new component
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 // Define types for logged issues and stats
@@ -140,6 +142,14 @@ export default function Home() {
             <SidebarGroupLabel>Core Features</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
+                <a href="#english-correction">
+                  <SidebarMenuButton tooltip="English Correction">
+                    <SpellCheck />
+                    <span>English Correction</span>
+                  </SidebarMenuButton>
+                </a>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <a href="#anomaly-detection">
                   <SidebarMenuButton tooltip="Anomaly Detection">
                     <ScanSearch />
@@ -235,7 +245,20 @@ export default function Home() {
           <h2 className="text-lg font-semibold">LLM-Powered Data Enhancement Platform</h2>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 space-y-8"> {/* Increased spacing */}          <Card id="anomaly-detection">
+        <main className="flex-1 overflow-y-auto p-6 space-y-8"> {/* Increased spacing */}
+          <Card id="english-correction">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <SpellCheck className="w-5 h-5 text-primary" />
+                English Language Correction
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">Powered by Gemini</p>
+            </CardHeader>
+            <CardContent>
+              <EnglishCorrection />
+            </CardContent>
+          </Card>
+          <Card id="anomaly-detection">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ScanSearch className="w-5 h-5 text-primary" />
@@ -247,7 +270,8 @@ export default function Home() {
               {/* Pass the callback function */}
               <DataAnomalyDetection onValidation={handleAnomalyValidation} />
             </CardContent>
-          </Card>          <Card id="standardization">
+          </Card>
+          <Card id="standardization">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileCheck2 className="w-5 h-5 text-primary" />
@@ -259,7 +283,8 @@ export default function Home() {
                {/* Pass the callback function */}
               <DataStandardization onValidation={handleStandardizationValidation} />
             </CardContent>
-          </Card>           <Card id="csv-processing">
+          </Card>
+          <Card id="csv-processing">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                  <TableProperties className="w-5 h-5 text-primary" />
@@ -270,9 +295,10 @@ export default function Home() {
             <CardContent>
               <CsvProcessing />
             </CardContent>
-           </Card>
+          </Card>
 
-            {/* New Card for Data Profiling */}           <Card id="profiling">
+          {/* New Card for Data Profiling */}
+          <Card id="profiling">
              <CardHeader>
                <CardTitle className="flex items-center gap-2">
                   <ClipboardList className="w-5 h-5 text-primary" />
@@ -283,9 +309,10 @@ export default function Home() {
              <CardContent>
                <DataProfiling />
              </CardContent>
-            </Card>
+          </Card>
 
-             {/* New Card for Evaluation Dashboard */}            <Card id="evaluation">
+          {/* New Card for Evaluation Dashboard */}
+          <Card id="evaluation">
              <CardHeader>
                <CardTitle className="flex items-center gap-2">
                   <Target className="w-5 h-5 text-primary" />
@@ -297,9 +324,10 @@ export default function Home() {
                 {/* Pass the session stats */}
                <EvaluationDashboard stats={sessionStats} />
              </CardContent>
-            </Card>
+          </Card>
 
-             {/* New Card for Issue Log */}            <Card id="issue-log">
+          {/* New Card for Issue Log */}
+          <Card id="issue-log">
              <CardHeader>
                <CardTitle className="flex items-center gap-2">
                   <ListX className="w-5 h-5 text-primary" />
@@ -311,7 +339,7 @@ export default function Home() {
                 {/* Pass the logged issues */}
                <IssueLog issues={loggedIssues} />
              </CardContent>
-            </Card>
+          </Card>
 
         </main>
       </SidebarInset>
