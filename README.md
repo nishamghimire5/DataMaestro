@@ -492,7 +492,7 @@ Use SQL queries with AI assistance:
 2. **Processing**: System executes queries directly or with AI assistance for complex ones
 3. **Result Generation**: Transformed data is presented with statistics
 
-**Example**: `SELECT Product, Region, SUM(Sales) FROM data GROUP BY Product, Region ORDER BY SUM(Sales) DESC`
+**Example**: `SELECT Product, Region FROM data WHERE Sales > 1000` retrieves products with sales over 1000, and the system displays the results along with basic statistics.
 
 For detailed technical information about the data processing architecture, see:
 
