@@ -188,6 +188,7 @@ This document provides a technical deep-dive into how CSV processing works in Da
    - User can approve/reject each suggestion individually
    - For FILL_MISSING_NUMERIC, user can select imputation method
 6. **Data Transformation Implementation**:
+
    ```typescript
    // From apply-csv-changes.ts
    export async function applyCsvApprovedChanges({
@@ -313,6 +314,7 @@ This document provides a technical deep-dive into how CSV processing works in Da
    ```
 
 4. **Transformation Functions**:
+
    ```typescript
    // Fill missing values transformation (simplified)
    function fillMissingValues(csvData, columnName, fillValue) {
@@ -437,6 +439,7 @@ This document provides a technical deep-dive into how CSV processing works in Da
    ```
 
 4. **Result Formatting & Schema Detection**:
+
    ```typescript
    // Calculate column statistics
    function generateColumnInfo(csvData) {
@@ -638,7 +641,7 @@ To illustrate the complete flow, here's an example of processing a CSV file with
 ### SQL Mode Flow
 
 ```
-1. User enters SQL: "SELECT Product, Region, SUM(Sales) as TotalSales FROM data GROUP BY Product, Region ORDER BY TotalSales DESC"
+1. User enters SQL: "SELECT Product, Region FROM data where Sales > 1000"
 2. System parses query and validates columns
 3. Query is executed against in-memory data
 4. Results are formatted as new CSV
