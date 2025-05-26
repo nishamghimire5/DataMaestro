@@ -22,6 +22,7 @@ import { processDirectCsv } from '@/ai/flows/csv-direct-processor';
 import { processDirectSql } from '@/ai/flows/csv-direct-sql-processor';
 import { LlmModel } from '@/ai/flows/schemas/csv-processor-types'; // Import the LlmModel enum
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -128,8 +129,8 @@ export function calculateFrontendNumericStats(csvData: string, columnName: strin
 }
 
 
-export default function CsvProcessing() {
-  const [currentCsvData, setCurrentCsvData] = useState<string | null>(null);
+export default function CsvProcessing() {  const [currentCsvData, setCurrentCsvData] = useState<string | null>(null);
+  const [csvDataHistory, setCsvDataHistory] = useState<string[]>([]);
   const [originalFileName, setOriginalFileName] = useState<string | null>(null);
   const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
   const [cleaningInstructions, setCleaningInstructions] = useState('');
@@ -171,8 +172,45 @@ export default function CsvProcessing() {
   const [ollamaModel, setOllamaModel] = useState<string>('gemma3:4b');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
+  const { toast } = useToast();  const updateCsvDataWithHistory = useCallback((newCsvData: string) => {
+    // Only add to history if there's current data and it's different from new data
+    if (currentCsvData && currentCsvData !== newCsvData) {
+      setCsvDataHistory(prev => [...prev, currentCsvData].slice(-10)); // Keep last 10 changes
+      // Show a toast notification for first change
+      if (csvDataHistory.length === 0) {
+        toast({
+          title: "Undo Available",
+          description: "You can now undo changes with the 'Undo Last Change' button.",
+          variant: "default",
+          action: <RotateCcw className="h-5 w-5 text-blue-500" />,
+          duration: 5000,
+        });
+      }
+    }
+    setCurrentCsvData(newCsvData);
+  }, [currentCsvData, csvDataHistory.length, toast]);
 
+  const handleUndoChange = useCallback(() => {
+    if (csvDataHistory.length > 0) {
+      const previousState = csvDataHistory[csvDataHistory.length - 1];
+      setCurrentCsvData(previousState);
+      setCsvDataHistory(prev => prev.slice(0, -1));
+      setIsIterativeProcessing(true); // Keep iterative mode active
+      
+      toast({
+        title: "Change Undone",
+        description: "Reverted to previous CSV state.",
+        variant: "default",
+        action: <RotateCcw className="h-5 w-5 text-blue-500" />,
+      });
+    } else {
+      toast({
+        title: "Nothing to Undo",
+        description: "No previous changes found in the current session.",
+        variant: "default",
+      });
+    }
+  }, [csvDataHistory, toast]);
   useEffect(() => {
     if (suggestionsResult && suggestionsResult.suggestions) {
       const allSuggestionsWithStatus = suggestionsResult.suggestions.map(s => ({
@@ -195,14 +233,13 @@ export default function CsvProcessing() {
         setOriginalDataForFlow(currentCsvData);
     }
   }, [currentCsvData, isIterativeProcessing]);
-
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       if (selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv')) {
         setOriginalFileName(selectedFile.name);
         const fileContent = await selectedFile.text();
-        setCurrentCsvData(fileContent);
+        updateCsvDataWithHistory(fileContent);
         setOriginalDataForFlow(fileContent); // Set original data for flow on new file upload
 
         const parsedForPreview = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
@@ -222,6 +259,7 @@ export default function CsvProcessing() {
         setProfileResult(null);
         setIsIterativeProcessing(false); 
         setCleaningInstructions('');
+        setCsvDataHistory([]); // Clear history for new file
       } else {
         setSuggestionsError('Please select a valid CSV file.');
         setOriginalFileName(null);
@@ -394,9 +432,8 @@ export default function CsvProcessing() {
         } else {
             console.log('[CSV Processing] CSV data was modified successfully');
         }
-        
-        // Update the current CSV data with the cleaned version
-        setCurrentCsvData(output.cleanedCsvData);
+          // Update the current CSV data with the cleaned version
+        updateCsvDataWithHistory(output.cleanedCsvData);
         setIsIterativeProcessing(true);
         
         // Set the result for display
@@ -637,12 +674,11 @@ export default function CsvProcessing() {
             setIsProcessingSql(false);
             return;
           }
-          
-          // For non-SELECT queries, update the data if there were changes
+            // For non-SELECT queries, update the data if there were changes
           if (aiHasChanges) {
             console.log('AI SQL processor made changes, using its result');
             setSqlResult(aiOutputWithFlag);
-            setCurrentCsvData(aiOutputWithFlag.processedCsvData);
+            updateCsvDataWithHistory(aiOutputWithFlag.processedCsvData);
             setIsIterativeProcessing(true);
             
             toast({
@@ -659,10 +695,9 @@ export default function CsvProcessing() {
           // Continue with the direct processor result
         }
       }
-      
-      // Update CSV data if processing was successful and produced changes
+        // Update CSV data if processing was successful and produced changes
       if (hasChanges) {
-        setCurrentCsvData(result.processedCsvData);
+        updateCsvDataWithHistory(result.processedCsvData);
         setIsIterativeProcessing(true);
         
         toast({
@@ -769,15 +804,14 @@ export default function CsvProcessing() {
             modelOptions: {
               geminiModel: selectedModel === LlmModel.GEMINI ? geminiModel : undefined,
               ollamaModel: selectedModel === LlmModel.OLLAMA ? ollamaModel : undefined
-            }
-          });
+            }          });
           
           // If AI was able to process it successfully, use that result instead
           const aiHasChanges = aiOutput.processedCsvData !== currentCsvData;
           if (aiHasChanges) {
             console.log('AI processor made changes, using its result');
             setCommandResult(aiOutput);
-            setCurrentCsvData(aiOutput.processedCsvData);
+            updateCsvDataWithHistory(aiOutput.processedCsvData);
             setIsIterativeProcessing(true);
             
             toast({
@@ -797,10 +831,9 @@ export default function CsvProcessing() {
 
       // Set the result from direct processor
       setCommandResult(result);
-      
-      // Update CSV data if processing was successful
+        // Update CSV data if processing was successful
       if (hasChanges) {
-        setCurrentCsvData(result.processedCsvData);
+        updateCsvDataWithHistory(result.processedCsvData);
         setIsIterativeProcessing(true);
         
         toast({
@@ -977,35 +1010,50 @@ export default function CsvProcessing() {
               ref={fileInputRef}
               className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 flex-grow"
               disabled={isLoadingSuggestions || isProfiling || isApplyingChanges}
-            />
-              {currentCsvData && (
-                 <Button onClick={handleDownload} variant="outline" size="sm" className="mt-2 sm:mt-0 flex-shrink-0">
-                     <Download className="mr-2 h-4 w-4" />
-                     Download Current CSV
-                 </Button>
+            />              {currentCsvData && (
+                 <div className="flex gap-2 mt-2 sm:mt-0">
+                     <Button onClick={handleDownload} variant="outline" size="sm" className="flex-shrink-0">
+                         <Download className="mr-2 h-4 w-4" />
+                         Download Current CSV
+                     </Button>                     {csvDataHistory.length > 0 && (
+                         <TooltipProvider>
+                             <Tooltip>
+                                 <TooltipTrigger asChild>
+                                     <Button onClick={handleUndoChange} variant="outline" size="sm" className="flex-shrink-0">
+                                         <RotateCcw className="mr-2 h-4 w-4" />
+                                         Undo Last Change
+                                     </Button>
+                                 </TooltipTrigger>
+                                 <TooltipContent>
+                                     <p>Revert to the previous state before the last operation</p>
+                                 </TooltipContent>
+                             </Tooltip>
+                         </TooltipProvider>
+                     )}
+                 </div>
             )}
-           </div>
-           {filePreview && (
+           </div>           {filePreview && (
             <div className="text-sm text-muted-foreground flex items-center gap-2 p-2 border rounded-md bg-secondary/50 mt-2">
               <FileText className="w-4 h-4 flex-shrink-0" />
               <span>{filePreview.name} ({filePreview.rowCount} rows, {(filePreview.size / 1024).toFixed(2)} KB)</span>
                {isIterativeProcessing && <Badge variant="secondary" className="ml-auto">Processed</Badge>}
+               {csvDataHistory.length > 0 && <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20">Undo Available</Badge>}
                {filePreview.size > 5 * 1024 * 1024 && ( 
                    <Badge variant="destructive" className="ml-2">Large File</Badge>
                )}
             </div>
           )}
-            <div className="relative">
-               <Textarea
+            <div className="relative">               <Textarea
                  placeholder="Or paste CSV data here..."
                  value={currentCsvData ?? ''}
                  onChange={(e) => {
-                    setCurrentCsvData(e.target.value);
                     // If pasting, assume it's new "original" data for this session
+                    updateCsvDataWithHistory(e.target.value);
                     setOriginalDataForFlow(e.target.value); 
                     setFilePreview(null);
                     if(fileInputRef.current) fileInputRef.current.value = ''; // Clear file input
-                    setIsIterativeProcessing(false); 
+                    setIsIterativeProcessing(false);
+                    setCsvDataHistory([]); // Clear history for new pasted data
                  }}
                  rows={8}
                  disabled={isLoadingSuggestions || isProfiling || isApplyingChanges}
@@ -1510,11 +1558,10 @@ export default function CsvProcessing() {
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Button 
+                    <div className="flex flex-wrap gap-2">                      <Button 
                         onClick={() => {
                           if (sqlResult && sqlResult.processedCsvData) {
-                            setCurrentCsvData(sqlResult.processedCsvData);
+                            updateCsvDataWithHistory(sqlResult.processedCsvData);
                             setIsIterativeProcessing(true);
                             toast({
                               title: "Changes Applied",
@@ -1770,9 +1817,7 @@ export default function CsvProcessing() {
                   <AlertTitle>Critical Application Error</AlertTitle>
                   <AlertDescription>{applyChangesError}</AlertDescription>
                 </Alert>
-              )}
-
-              {finalCleanedResult && (
+              )}              {finalCleanedResult && (
                 <div className="mt-6 space-y-4 p-4 border rounded-md bg-green-50 dark:bg-green-900/30">
                   <h3 className="font-medium text-lg flex items-center gap-2 text-green-700 dark:text-green-300">
                     <CheckCircle className="w-6 h-6"/>Cleaning Round Complete
@@ -1790,6 +1835,16 @@ export default function CsvProcessing() {
                         </div>
                       )}
                       <p className="text-xs text-muted-foreground mt-3">The data has been updated if changes were successful. You can download it, get new suggestions, or profile the cleaned version.</p>
+                      
+                      {csvDataHistory.length > 0 && (
+                        <Alert className="mt-3 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700">
+                          <RotateCcw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <AlertTitle className="text-blue-700 dark:text-blue-300">Undo Available</AlertTitle>
+                          <AlertDescription className="text-blue-600 dark:text-blue-400">
+                            If you're not satisfied with these changes, you can use the "Undo Last Change" button to revert to the previous state.
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
