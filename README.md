@@ -1460,7 +1460,7 @@ Please make sure your code adheres to the existing style and that all tests pass
 <div align="center" style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 40px;">
   <h3>🧠 DataMaestro</h3>
   <p>
-    <img src="https://img.shields.io/badge/Made_with_❤️_by-DataMaestro_Team-FF6C37?style=flat-square" alt="Made with love"/>
+    <img src="https://img.shields.io/badge/Made_with_❤️_by-DataMaestro_TheNisham-FF6C37?style=flat-square" alt="Made with love"/>
     <img src="https://img.shields.io/badge/Status-Active-success?style=flat-square" alt="Status"/>
     <img src="https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square" alt="Version"/>
   </p>
