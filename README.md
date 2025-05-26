@@ -1452,7 +1452,7 @@ Please make sure your code adheres to the existing style and that all tests pass
 
 <div class="license-card">
 <p align="center">This project is licensed under the Nisham_license.</p>
-<p align="center">© 2025 DataMaestro Team</p>
+<p align="center">© 2025 DataMaestro -TheNisham</p>
 </div>
 
 ---
