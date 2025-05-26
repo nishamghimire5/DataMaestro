@@ -1469,5 +1469,5 @@ Please make sure your code adheres to the existing style and that all tests pass
     <a href="https://github.com/yourusername/DataMaestro/issues"><img src="https://img.shields.io/badge/🐛_Report_Bug-FF6C37?style=for-the-badge&logoColor=white" alt="Report Bug"/></a>
     <a href="https://github.com/yourusername/DataMaestro/issues"><img src="https://img.shields.io/badge/✨_Request_Feature-00A98F?style=for-the-badge&logoColor=white" alt="Request Feature"/></a>
   </p>
-  <p>© 2025 DataMaestro Team • All Rights Reserved</p>
+  <p>© 2025 DataMaestro -TheNisham • All Rights Reserved</p>
 </div>
