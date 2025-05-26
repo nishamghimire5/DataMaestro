@@ -28,7 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, AlertTriangle, Download, FileText, CheckCircle, BarChartHorizontalBig, Table, Sparkles, ListChecks, UserCog, Bot, RotateCcw, Settings2, Lightbulb, Info, Database, MessageSquare, Wand2, Search, Save } from 'lucide-react';
+import { Loader2, AlertTriangle, Download, FileText, CheckCircle, BarChartHorizontalBig, Table, Sparkles, ListChecks, UserCog, Bot, RotateCcw, RotateCw, Settings2, Lightbulb, Info, Database, MessageSquare, Wand2, Search, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -129,8 +129,10 @@ export function calculateFrontendNumericStats(csvData: string, columnName: strin
 }
 
 
-export default function CsvProcessing() {  const [currentCsvData, setCurrentCsvData] = useState<string | null>(null);
+export default function CsvProcessing() {
+  const [currentCsvData, setCurrentCsvData] = useState<string | null>(null);
   const [csvDataHistory, setCsvDataHistory] = useState<string[]>([]);
+  const [csvDataRedoStack, setCsvDataRedoStack] = useState<string[]>([]); // Added in previous step
   const [originalFileName, setOriginalFileName] = useState<string | null>(null);
   const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
   const [cleaningInstructions, setCleaningInstructions] = useState('');
@@ -172,45 +174,78 @@ export default function CsvProcessing() {  const [currentCsvData, setCurrentCsvD
   const [ollamaModel, setOllamaModel] = useState<string>('gemma3:4b');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();  const updateCsvDataWithHistory = useCallback((newCsvData: string) => {
+  const { toast } = useToast();
+
+  const updateCsvDataWithHistory = useCallback((newCsvData: string) => {
     // Only add to history if there's current data and it's different from new data
     if (currentCsvData && currentCsvData !== newCsvData) {
-      setCsvDataHistory(prev => [...prev, currentCsvData].slice(-10)); // Keep last 10 changes
-      // Show a toast notification for first change
-      if (csvDataHistory.length === 0) {
+      const newHistory = [...csvDataHistory, currentCsvData].slice(-10); // Keep last 10 changes
+      setCsvDataHistory(newHistory);
+      if (newHistory.length === 1 && csvDataHistory.length === 0) { // First undoable change
         toast({
           title: "Undo Available",
-          description: "You can now undo changes with the 'Undo Last Change' button.",
+          description: "You can now undo this change.",
           variant: "default",
-          action: <RotateCcw className="h-5 w-5 text-blue-500" />,
-          duration: 5000,
+          className: "bg-blue-50 border-blue-200",
+          action: <RotateCcw className="h-4 w-4 text-blue-600" />,
         });
       }
     }
     setCurrentCsvData(newCsvData);
-  }, [currentCsvData, csvDataHistory.length, toast]);
+    setCsvDataRedoStack([]); // Clear redo stack on new change
+  }, [currentCsvData, csvDataHistory, toast]);
 
   const handleUndoChange = useCallback(() => {
     if (csvDataHistory.length > 0) {
-      const previousState = csvDataHistory[csvDataHistory.length - 1];
-      setCurrentCsvData(previousState);
-      setCsvDataHistory(prev => prev.slice(0, -1));
-      setIsIterativeProcessing(true); // Keep iterative mode active
+      const previousData = csvDataHistory[csvDataHistory.length - 1];
+      const newHistory = csvDataHistory.slice(0, -1);
       
+      if (currentCsvData) {
+        setCsvDataRedoStack(prev => [...prev, currentCsvData].slice(-10)); // Add current state to redo stack
+      }
+      setCsvDataHistory(newHistory);
+      setCurrentCsvData(previousData);
       toast({
         title: "Change Undone",
-        description: "Reverted to previous CSV state.",
+        description: "Reverted to the previous data state.",
         variant: "default",
-        action: <RotateCcw className="h-5 w-5 text-blue-500" />,
+        action: <RotateCcw className="h-4 w-4" />,
       });
     } else {
       toast({
         title: "Nothing to Undo",
-        description: "No previous changes found in the current session.",
-        variant: "default",
+        description: "No previous changes found in history.",
+        variant: "destructive"
       });
     }
-  }, [csvDataHistory, toast]);
+  }, [currentCsvData, csvDataHistory, toast]);
+
+  const handleRedoChange = useCallback(() => {
+    if (csvDataRedoStack.length > 0) {
+      const nextData = csvDataRedoStack[csvDataRedoStack.length - 1];
+      const newRedoStack = csvDataRedoStack.slice(0, -1);
+
+      if (currentCsvData) {
+        setCsvDataHistory(prev => [...prev, currentCsvData].slice(-10)); // Add current state to undo history
+      }
+      setCsvDataRedoStack(newRedoStack);
+      setCurrentCsvData(nextData);
+      toast({
+        title: "Change Redone",
+        description: "Reverted to the next data state.",
+        variant: "default",
+        action: <RotateCw className="h-4 w-4" />,
+      });
+    } else {
+      toast({
+        title: "Nothing to Redo",
+        description: "No subsequent changes found in history.",
+        variant: "destructive"
+      });
+    }
+  }, [currentCsvData, csvDataRedoStack, toast]);
+
+
   useEffect(() => {
     if (suggestionsResult && suggestionsResult.suggestions) {
       const allSuggestionsWithStatus = suggestionsResult.suggestions.map(s => ({
@@ -238,28 +273,28 @@ export default function CsvProcessing() {  const [currentCsvData, setCurrentCsvD
     if (selectedFile) {
       if (selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv')) {
         setOriginalFileName(selectedFile.name);
-        const fileContent = await selectedFile.text();
-        updateCsvDataWithHistory(fileContent);
-        setOriginalDataForFlow(fileContent); // Set original data for flow on new file upload
-
-        const parsedForPreview = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
-        setFilePreview({
-          name: selectedFile.name,
-          size: selectedFile.size,
-          type: selectedFile.type,
-          rowCount: parsedForPreview.data.length,
-        });
-        
-        setSuggestionsError(null);
-        setProfileError(null);
-        setApplyChangesError(null);
-        setApplySummary(null);
-        setSuggestionsResult(null);
-        setFinalCleanedResult(null);
-        setProfileResult(null);
-        setIsIterativeProcessing(false); 
-        setCleaningInstructions('');
-        setCsvDataHistory([]); // Clear history for new file
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target?.result as string;
+          // updateCsvDataWithHistory(text); // This will be called after initial processing if any
+          setCurrentCsvData(text); // Set current data directly first
+          setCsvDataHistory([]); // Clear history for new file
+          setCsvDataRedoStack([]); // Clear redo stack for new file
+          setFilePreview({ name: selectedFile.name, size: selectedFile.size, type: selectedFile.type, rowCount: Papa.parse(text, { header: true, skipEmptyLines: true }).data.length });
+          setSuggestionsResult(null);
+          setFinalCleanedResult(null);
+          setApplySummary(null);
+          setProfileResult(null);
+          setSqlResult(null);
+          setCommandResult(null);
+          setIsIterativeProcessing(false);
+          setAppliedSuggestionIds(new Set());
+          setCleaningInstructions(''); // Reset instructions for new file
+          setUserInstructionSuggestions([]);
+          setGeneralSuggestions([]);
+          toast({ title: "File Loaded", description: `${selectedFile.name} loaded successfully.` });
+        };
+        reader.readAsText(selectedFile);
       } else {
         setSuggestionsError('Please select a valid CSV file.');
         setOriginalFileName(null);
@@ -1030,6 +1065,19 @@ export default function CsvProcessing() {  const [currentCsvData, setCurrentCsvD
                              </Tooltip>
                          </TooltipProvider>
                      )}
+                     <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={handleRedoChange} variant="outline" size="sm" disabled={csvDataRedoStack.length === 0}>
+                      <RotateCw className="mr-2 h-4 w-4" />
+                      Redo Last Change
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Redo the last undone change</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
                  </div>
             )}
            </div>           {filePreview && (
@@ -1038,26 +1086,43 @@ export default function CsvProcessing() {  const [currentCsvData, setCurrentCsvD
               <span>{filePreview.name} ({filePreview.rowCount} rows, {(filePreview.size / 1024).toFixed(2)} KB)</span>
                {isIterativeProcessing && <Badge variant="secondary" className="ml-auto">Processed</Badge>}
                {csvDataHistory.length > 0 && <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20">Undo Available</Badge>}
+               {csvDataRedoStack.length > 0 && <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20">Redo Available</Badge>}
                {filePreview.size > 5 * 1024 * 1024 && ( 
                    <Badge variant="destructive" className="ml-2">Large File</Badge>
                )}
             </div>
           )}
             <div className="relative">               <Textarea
-                 placeholder="Or paste CSV data here..."
-                 value={currentCsvData ?? ''}
+                 placeholder="Or paste your CSV data here (max 2MB)"
+                 className="min-h-[150px] flex-grow"
+                 value={currentCsvData || ''}
                  onChange={(e) => {
-                    // If pasting, assume it's new "original" data for this session
-                    updateCsvDataWithHistory(e.target.value);
-                    setOriginalDataForFlow(e.target.value); 
-                    setFilePreview(null);
-                    if(fileInputRef.current) fileInputRef.current.value = ''; // Clear file input
-                    setIsIterativeProcessing(false);
-                    setCsvDataHistory([]); // Clear history for new pasted data
-                 }}
+                    const pastedData = e.target.value;
+                    if (pastedData.length > 2 * 1024 * 1024) {
+                      toast({
+                        title: "Data Too Large",
+                        description: "Pasted data exceeds 2MB limit. Please use a smaller dataset or upload a file.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                      // updateCsvDataWithHistory(pastedData); // This will be called after initial processing if any
+                      setCurrentCsvData(pastedData); // Set current data directly first
+                      setCsvDataHistory([]); // Clear history for new data
+                      setCsvDataRedoStack([]); // Clear redo stack for new data
+                      setOriginalFileName('pasted_data.csv');
+                      setFilePreview({ name: 'pasted_data.csv', size: pastedData.length, type: 'text/csv', rowCount: Papa.parse(pastedData, { header: true, skipEmptyLines: true }).data.length });
+                      setSuggestionsResult(null);
+                      setFinalCleanedResult(null);
+                      setApplySummary(null);
+                      setProfileResult(null);
+                      setSqlResult(null);
+                      setCommandResult(null);
+                      setIsIterativeProcessing(false);
+                      setAppliedSuggestionIds(new Set());
+                    }}
                  rows={8}
                  disabled={isLoadingSuggestions || isProfiling || isApplyingChanges}
-                 className="text-sm font-mono"
                />
                {currentCsvData && currentCsvData.length > 10 * 1024 * 1024 && ( 
                    <Badge variant="destructive" className="absolute bottom-2 right-2">Large Text</Badge>
@@ -1546,6 +1611,15 @@ export default function CsvProcessing() {  const [currentCsvData, setCurrentCsvD
                                         ))}
                                       </tr>
                                     ))}
+
+                                    {/* If there are more than 5 rows, show a "show more" row */}
+                                    {rows.length > 5 && (
+                                      <tr>
+                                        <td colSpan={headers.length} className="p-1 text-center text-muted-foreground">
+                                          ... and more rows matched your query.
+                                        </td>
+                                      </tr>
+                                    )}
                                   </tbody>
                                 </table>
                               </div>
@@ -1858,7 +1932,7 @@ export default function CsvProcessing() {  const [currentCsvData, setCurrentCsvD
                 <CardTitle className="flex items-center gap-2"><BarChartHorizontalBig className="w-5 h-5 text-primary"/>CSV Data Profile ({isIterativeProcessing ? 'Processed Data' : 'Original Data'})</CardTitle>
                 <CardDescription>{profileResult.overallSummary}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-sm mb-4">
+              <CardContent className="space-y-4">                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 sm:gap-x-4 gap-y-1">
                   <div><strong>Total Records Analyzed:</strong> {profileResult.recordCount}</div>
                   <div><strong>Total Fields Found:</strong> {profileResult.fieldCount}</div>
                 </div>
