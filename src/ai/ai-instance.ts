@@ -18,5 +18,5 @@ export const ai = genkit({
       serverAddress: 'http://127.0.0.1:11434', // default local address
     }),
   ],
-  model: 'googleai/gemini-2.0-flash',
+  model: 'googleai/gemini-2.5-flash-preview-05-20',
 });

@@ -21,7 +21,7 @@ DataMaestro implements a multi-layered architecture with clear separation of con
 - **AI Processing Layer**:
 
   - Genkit AI framework (v1.8.0) as abstraction layer for LLM operations
-  - Primary: Google Gemini 2.0 Flash with API key authentication
+  - Primary: Google Gemini 2.5 Flash with API key authentication
   - Secondary: Local Ollama integration with Gemma3:4b model for offline processing
   - Structured prompt engineering with templating
 
@@ -83,7 +83,7 @@ DataMaestro implements a multi-layered architecture with clear separation of con
          serverAddress: "http://127.0.0.1:11434",
        }),
      ],
-     model: "googleai/gemini-2.0-flash",
+     model: "googleai/gemini-2.5-flash-preview-05-20",
    });
    ```
 
@@ -217,6 +217,7 @@ The CSV processing is the core functionality with three distinct modes, each wit
      ```
 
 3. **Change Application Engine**:
+
    - **Implementation**: `apply-csv-changes.ts` handles the transformation logic
    - **Processing Strategy**:
      - Group suggestions by type for optimized processing
@@ -309,6 +310,7 @@ The CSV processing is the core functionality with three distinct modes, each wit
      ```
 
    - **AI Fallback**: For unmatched or complex commands
+
      ```typescript
      // If no pattern matched, use AI processing
      if (actionsApplied === 0) {
@@ -354,6 +356,7 @@ The CSV processing is the core functionality with three distinct modes, each wit
 2. **Execution Strategy**:
 
    - **Direct Execution Pipeline**:
+
      ```typescript
      function directSqlExecution(
        query: string,
@@ -399,6 +402,7 @@ The CSV processing is the core functionality with three distinct modes, each wit
        };
      }
      ```
+
    - **AI Assistance Pipeline**:
      - Natural language to SQL translation
      - Complex query handling
@@ -1700,6 +1704,7 @@ The CSV processing is the core functionality with three distinct modes, each wit
    ```
 
 5. **Metrics & Logging Update**
+
    ```typescript
    // From page.tsx
    const handleStandardizationValidation = useCallback(

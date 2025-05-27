@@ -40,7 +40,7 @@ DataMaestro leverages multiple AI processing engines:
 
 1. **Model Selection & Orchestration**:
 
-   - Primary: Google Gemini 2.0 Flash (cloud API)
+   - Primary: Google Gemini 2.5 Flash (cloud API)
    - Alternative: Local Ollama with Gemma3:4b model
    - Automatic fallback system if primary model fails
    - Model-specific optimization based on task complexity
@@ -280,7 +280,7 @@ To illustrate how data flows through the system, consider this example of proces
 
 2. **AI Analysis**:
 
-   - Data is sent to LLM (primarily Gemini 2.0 Flash)
+   - Data is sent to LLM (primarily Gemini 2.5 Flash)
    - AI examines patterns across columns using specialized prompt
    - Detects various issues: missing values, format inconsistencies, outliers
    - Each issue is scored for confidence (0.0-1.0) and priority (low/medium/high)

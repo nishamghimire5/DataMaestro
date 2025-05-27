@@ -250,7 +250,7 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
   if (model !== LlmModel.DEFAULT) {
     const modelOptions = input.modelOptions || {};
     if (model === LlmModel.GEMINI) {
-      console.log(`[CSV Direct Commands] Using Gemini model: gemini-2.0-flash`);
+      console.log(`[CSV Direct Commands] Using Gemini model: gemini-2.5-flash-preview-05-20`);
     } else if (model === LlmModel.OLLAMA) {
       console.log(`[CSV Direct Commands] Using Ollama model: ${modelOptions.ollamaModel || 'gemma3:4b'}`);
     }
@@ -318,8 +318,8 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
       if (input.model === LlmModel.GEMINI) {
         // Always use the supported Gemini model, fully qualified
         aiSettings = { 
-          model: 'googleai/gemini-2.0-flash'
-          // provider: 'google' // This is likely not needed as 'googleai/gemini-2.0-flash' implies the provider
+          model: 'googleai/gemini-2.5-flash-preview-05-20'
+          // provider: 'google' // This is likely not needed as 'googleai/gemini-2.5-flash-preview-05-20' implies the provider
         };
       } else if (input.model === LlmModel.OLLAMA) {
         // Configure for Ollama - use the ollamaModel from options or the actual model name from 'ollama list'
