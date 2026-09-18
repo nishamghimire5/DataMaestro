@@ -170,7 +170,7 @@ export default function CsvProcessing() {
   
   // Add state for LLM model selection
   const [selectedModel, setSelectedModel] = useState<LlmModel>(LlmModel.DEFAULT);
-  const [geminiModel, setGeminiModel] = useState<string>('gemini-3.6-flash');
+  const [geminiModel, setGeminiModel] = useState<string>('gemini-3.5-flash');
   const [ollamaModel, setOllamaModel] = useState<string>('gemma3:4b');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1197,7 +1197,7 @@ export default function CsvProcessing() {
                         <SelectValue placeholder="Select Gemini model" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="gemini-3.6-flash">Gemini 3.6 Flash</SelectItem>
+                        <SelectItem value="gemini-3.5-flash">Gemini 3.5 Flash</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

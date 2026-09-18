@@ -50,6 +50,7 @@ For a detailed workflow and architecture diagrams, see [docs/README_DATA_PROCESS
 
 ## Troubleshooting
 
+- **AI suggestions fail after deployment:** Add `GOOGLE_GENAI_API_KEY` to the Vercel project's Environment Variables for the Production environment, then redeploy. The app uses `gemini-3.5-flash` through the Google GenAI API.
 - **Ollama Model Not Found:**
   - Ensure Ollama is running and the model is installed (`ollama list`)
 - **Genkit Flows Not Starting:**

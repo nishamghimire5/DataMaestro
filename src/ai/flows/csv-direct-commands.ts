@@ -250,7 +250,7 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
   if (model !== LlmModel.DEFAULT) {
     const modelOptions = input.modelOptions || {};
     if (model === LlmModel.GEMINI) {
-      console.log(`[CSV Direct Commands] Using Gemini model: ${modelOptions.geminiModel || 'gemini-3.6-flash'}`);
+      console.log(`[CSV Direct Commands] Using Gemini model: ${modelOptions.geminiModel || 'gemini-3.5-flash'}`);
     } else if (model === LlmModel.OLLAMA) {
       console.log(`[CSV Direct Commands] Using Ollama model: ${modelOptions.ollamaModel || 'gemma3:4b'}`);
     }
@@ -316,7 +316,7 @@ export async function processCsvWithCommands(input: CsvDirectCommandInput): Prom
       };
       
       if (input.model === LlmModel.GEMINI) {
-        const geminiModel = input.modelOptions?.geminiModel || 'gemini-3.6-flash';
+        const geminiModel = input.modelOptions?.geminiModel || 'gemini-3.5-flash';
         aiSettings = { 
           model: `googleai/${geminiModel}`
         };
